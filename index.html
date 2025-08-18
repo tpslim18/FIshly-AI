@@ -72,16 +72,23 @@ function getSeasonalTip() {
 
 // --- HELPER FUNCTIONS ---
 function capitalize(str){ return str.charAt(0).toUpperCase() + str.slice(1); }
-function fuzzyMatch(input, options){
-  input = input.toLowerCase();
-  let bestMatch = null, maxScore=0;
-  for(let opt of options){
+
+// improved fuzzy match that looks for multiple word matches and synonyms
+function findFish(query){
+  query = query.toLowerCase();
+  const fishNames = Object.keys(fishingData.fish);
+  let bestMatch = null;
+  let scoreMax = 0;
+  for(let fish of fishNames){
     let score = 0;
-    const words = opt.toLowerCase().split(" ");
-    for(let w of words) if(input.includes(w)) score++;
-    if(score>maxScore){ maxScore=score; bestMatch=opt; }
+    const words = fish.toLowerCase().split(" ");
+    for(let w of words) if(query.includes(w)) score++;
+    // bonus: also count action words like "catch", "bait", "fish" as relevance
+    const actions = ["catch","fish","bait","use","like","attract","fishing"];
+    for(let a of actions) if(query.includes(a)) score += 0.2;
+    if(score > scoreMax){ scoreMax = score; bestMatch = fish; }
   }
-  return maxScore>0 ? bestMatch : null;
+  return scoreMax>0 ? bestMatch : null;
 }
 
 // --- CHATBOT LOGIC ---
@@ -90,12 +97,12 @@ function getResponse(input){
   const elaborateKeywords = ["tell me more","explain","why does that work","elaborate"];
   const wantsElaboration = elaborateKeywords.some(word => input.includes(word));
 
-  if(input==="joke") return jokes[Math.floor(Math.random()*jokes.length)] + " " + getSeasonalTip();
-  if(input==="top baits") return "🎯 Some top baits today are: " + Object.keys(fishingData.fish).join(", ") + ". " + getSeasonalTip();
-  if(input==="all fish") return "🐟 Here’s a list of fish you can target: " + Object.keys(fishingData.fish).join(", ") + ". " + getSeasonalTip();
-  if(input==="fishing tips") return "💡 Pro tip: Match bait size to fish size, fish early morning or late evening, and enjoy your time outdoors! " + getSeasonalTip();
+  if(input.includes("joke")) return jokes[Math.floor(Math.random()*jokes.length)] + " " + getSeasonalTip();
+  if(input.includes("top baits")) return "🎯 Some top baits today are: " + Object.keys(fishingData.fish).join(", ") + ". " + getSeasonalTip();
+  if(input.includes("all fish")) return "🐟 Here’s a list of fish you can target: " + Object.keys(fishingData.fish).join(", ") + ". " + getSeasonalTip();
+  if(input.includes("fishing tips")) return "💡 Pro tip: Match bait size to fish size, fish early morning or late evening, and enjoy your time outdoors! " + getSeasonalTip();
 
-  const fishMatch = fuzzyMatch(input, Object.keys(fishingData.fish));
+  const fishMatch = findFish(input);
   if(fishMatch){
     const info = fishingData.fish[fishMatch];
     let response = `Hey buddy! ${capitalize(fishMatch)} are fun to catch. They usually bite on ${info.bait.join(", ")}. Try ${info.techniques.join(", ")} at ${info.depth} when the water is around ${info.waterTemp}.`;
@@ -104,7 +111,7 @@ function getResponse(input){
     return response;
   }
 
-  return "Hmm… I’m not sure about that one. Try asking about a fish, bait, or lure, or ask me for a joke! " + getSeasonalTip();
+  return "Hmm… I’m not quite sure. Try asking about a fish, bait, lure, or ask me for a joke! " + getSeasonalTip();
 }
 
 // --- DISPLAY MESSAGES ---
