@@ -3,208 +3,130 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎣 Smart AI Fishing Buddy - Humanized Edition</title>
+<title>🐟 Fishly-AI</title>
 <style>
-body { font-family: Arial, sans-serif; background:#e0f7fa; margin:0; padding:0; display:flex; flex-direction:column; height:100vh; }
-#chatContainer { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; }
-.message { margin:10px 0; padding:10px; border-radius:8px; max-width:70%; }
-.user { background:#b2ebf2; align-self:flex-end; }
-.bot { background:#ffffff; align-self:flex-start; }
-#inputContainer { display:flex; padding:10px; background:#00acc1; }
-#userInput { flex:1; padding:10px; border:none; border-radius:8px; }
-#sendBtn { padding:10px 20px; border:none; border-radius:8px; margin-left:5px; background:#007c91; color:#fff; cursor:pointer; }
-.quick-btn { padding:5px 10px; margin:5px; border:none; border-radius:6px; cursor:pointer; background:#0097a7; color:white; }
-#conditions { display:flex; justify-content:space-around; padding:10px; background:#0097a7; color:white; flex-wrap:wrap; }
-#conditions select, #conditions input { margin:5px; padding:5px; border-radius:6px; border:none; }
+body { font-family: Arial, sans-serif; background: #e0f7fa; color: #004d40; padding: 20px; }
+h1 { text-align: center; }
+#chat { border: 1px solid #004d40; padding: 10px; height: 400px; overflow-y: scroll; background: #b2dfdb; border-radius: 10px; }
+.user { color: #00695c; margin: 5px 0; }
+.fishly { color: #004d40; margin: 5px 0; }
+#inputArea { margin-top: 10px; display: flex; }
+#userInput { flex: 1; padding: 5px; font-size: 16px; }
+#sendBtn, #uploadBtn { padding: 5px 10px; margin-left: 5px; font-size: 16px; cursor: pointer; }
+#canvasWrapper { margin-top: 20px; text-align: center; }
 </style>
 </head>
 <body>
-
-<div id="chatContainer"></div>
-
-<div id="conditions">
-  <label>Weather:
-    <select id="weatherSelect">
-      <option value="Sunny">Sunny 🌞</option>
-      <option value="Cloudy">Cloudy ☁️</option>
-      <option value="Rainy">Rainy 🌧️</option>
-    </select>
-  </label>
-  <label>Time:
-    <select id="timeSelect">
-      <option value="Morning">Morning 🌅</option>
-      <option value="Midday">Midday ☀️</option>
-      <option value="Evening">Evening 🌇</option>
-    </select>
-  </label>
-  <label>Water Temp (°F):
-    <input type="number" id="tempInput" min="50" max="90" value="70">
-  </label>
-  <button id="updateConditionsBtn">Update Conditions</button>
-</div>
-
-<div id="inputContainer">
+<h1>🐟 Fishly-AI</h1>
+<div id="chat"></div>
+<div id="inputArea">
   <input type="text" id="userInput" placeholder="Type your message..." />
   <button id="sendBtn">Send</button>
+  <input type="file" id="uploadBtn" accept="image/*"/>
+</div>
+<div id="canvasWrapper">
+  <canvas id="waterCanvas" style="max-width:100%; border:1px solid #004d40; border-radius:10px;"></canvas>
 </div>
 
-<div style="padding:10px; background:#007c91;">
-  <button class="quick-btn" data-query="top baits">Top Baits</button>
-  <button class="quick-btn" data-query="all fish">All Fish</button>
-  <button class="quick-btn" data-query="all lures">All Lures</button>
-  <button class="quick-btn" data-query="tell me a joke">Tell a Joke</button>
-  <button class="quick-btn" data-query="daily plan">Generate Daily Plan</button>
-</div>
+<!-- TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.9.0/dist/tf.min.js"></script>
 
 <script>
-// --- DATA ---
-const fishingData=[
-  {fish:"Bass",bait:["Worms","Crankbaits","Soft plastics","Spinnerbaits"],depth:"Mid-depth",temp:[55,75],rigs:["Surface feeding","Jigging","Casting"],location:["Lake","River"],season:["Spring","Summer"]},
-  {fish:"Carp",bait:["Hot dogs","Corn","Bread","Dough balls"],depth:"Shallow",temp:[65,80],rigs:["Bottom fishing","Float rig"],location:["Lake","Pond"],season:["Spring","Summer"]},
-  {fish:"Pike",bait:["Spinnerbaits","Crankbaits","Minnows","Leeches"],depth:"Mid-depth",temp:[55,70],rigs:["Casting","Trolling","Jigging"],location:["Lake","River"],season:["Spring","Summer"]},
-  {fish:"Bluegill",bait:["Worms","Crickets","Bread"],depth:"Shallow",temp:[60,75],rigs:["Float rig","Casting"],location:["Pond","Lake"],season:["Spring","Summer"]}
+// Chat elements
+const chatDiv = document.getElementById('chat');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const uploadBtn = document.getElementById('uploadBtn');
+const canvas = document.getElementById('waterCanvas');
+const ctx = canvas.getContext('2d');
+
+// Fish database
+const fishDB = [
+  { name: 'Bass', baits: ['Worms', 'Crankbaits', 'Soft plastics', 'Spinnerbaits'], depth: 'Mid-depth', temp: '55-75°F', locations: ['Lake', 'River'] },
+  { name: 'Pike', baits: ['Spinnerbaits', 'Crankbaits', 'Minnows', 'Leeches'], depth: 'Mid-depth', temp: '55-70°F', locations: ['Lake', 'River'] },
+  { name: 'Carp', baits: ['Hot dogs', 'Corn', 'Bread', 'Dough balls'], depth: 'Shallow', temp: '65-80°F', locations: ['Lake', 'Pond'] },
+  { name: 'Bluegill', baits: ['Worms', 'Corn'], depth: 'Shallow', temp: '65-75°F', locations: ['Lake', 'Pond'] }
 ];
 
-const jokes=["What do you call a fish with no eyes? Fsh! 🐟","Why did the fish blush? Because it saw the lake's bottom! 😆","Why are fish so smart? They spend all day in school! 🎓"];
-
-let conversationMemory=[];
-let userPreferences={preferredFish:[],preferredBait:[],currentFish:null,currentBait:null,lastWeather:"Sunny",lastTemp:70,lastTime:"Morning",failedAttempts:[],suggestedAlternatives:[]};
-
-const baitSynonyms={ "dog sausage":"Hot dogs", "baitfish":"Minnows", "corn cob":"Corn", "bread dough":"Bread", "spinners":"Spinnerbaits", "hotdog":"Hot dogs" };
-
-function randomChoice(arr){return arr[Math.floor(Math.random()*arr.length)];}
-function addMessage(type,text){const chat=document.getElementById("chatContainer");const div=document.createElement("div");div.className="message "+type;div.textContent=text;chat.appendChild(div);chat.scrollTop=chat.scrollHeight;}
-function getSeasonalTip(){return randomChoice(["Late evening is great for bites! 🌇","Early morning bites are hot! 🌅","Cloudy days can be productive ☁️"]);}
-
-// --- CONDITIONS ---
-function updateConditions(){
-  userPreferences.lastWeather=document.getElementById("weatherSelect").value;
-  userPreferences.lastTime=document.getElementById("timeSelect").value;
-  userPreferences.lastTemp=parseInt(document.getElementById("tempInput").value);
-  addMessage("bot",`Conditions updated! Weather: ${userPreferences.lastWeather}, Time: ${userPreferences.lastTime}, Water Temp: ${userPreferences.lastTemp}°F 🌡️`);
+// Chat helper
+function addMessage(sender, text) {
+  const div = document.createElement('div');
+  div.className = sender;
+  div.innerHTML = `<strong>${sender === 'user' ? 'You' : 'Fishly-AI'}:</strong> ${text}`;
+  chatDiv.appendChild(div);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-// --- DAILY PLAN ---
-function generateDailyPlan(){
-  let plan=[];
-  const timeSlots=["Morning","Midday","Evening"];
-  const fishes=userPreferences.preferredFish.length?userPreferences.preferredFish:fishingData.map(f=>f.fish);
-  const baits=userPreferences.preferredBait.length?userPreferences.preferredBait:[...new Set(fishingData.map(f=>f.bait).flat())];
-  
-  timeSlots.forEach(slot=>{
-    const fish=randomChoice(fishes);
-    const fishData=fishingData.find(f=>f.fish===fish);
-    const bait=randomChoice(fishData.bait.filter(b=>baits.includes(b))||fishData.bait);
-    plan.push(`${slot}: ${fishData.fish} 🐟 using ${bait} 🎣 at ${fishData.depth}, technique: ${randomChoice(fishData.rigs)}, water: ${userPreferences.lastTemp}°F. Locations: ${fishData.location.join(", ")}. Conditions: ${userPreferences.lastWeather}, Time: ${userPreferences.lastTime}. ${getSeasonalTip()}`);
-  });
-  return plan.join("\n\n");
+function fishlyReply(msg) {
+  msg = msg.toLowerCase();
+  if(msg.includes('hello') || msg.includes('hi')) return "Hey there! How's the fishing vibe today? 🛶";
+  if(msg.includes('bait')) return "Absolutely! I can help you pick a bait. Which fish are you targeting?";
+  if(msg.includes('pike')) return "Pike 🐟 usually bite on Spinnerbaits, Crankbaits, Minnows, Leeches. Try Casting, Trolling, Jigging at mid-depth. Early morning or late evening bites are hot!";
+  if(msg.includes('bass')) return "Bass 🐟 usually bite on Worms, Crankbaits, Soft plastics, Spinnerbaits. Try Surface feeding, Jigging, Casting at mid-depth. Morning or late evening is best!";
+  if(msg.includes('carp')) return "Carp 🐟 usually bite on Hot dogs, Corn, Bread, Dough balls. Try Bottom fishing or Float rigs at shallow water. Early morning bites are ideal!";
+  if(msg.includes('bluegill')) return "Bluegill 🐟 love Worms or Corn. Fish shallow water near structures in the morning or late evening.";
+  if(msg.includes('top baits')) {
+    let allBaits = [...new Set(fishDB.flatMap(f=>f.baits))];
+    return `Top baits: ${allBaits.join(', ')}`;
+  }
+  return "Hmm… 🧐 Could you clarify which fish or bait you're asking about? I can give fishing tips!";
 }
 
-// --- ALTERNATIVES ---
-function suggestAlternatives(fishObj){
-  const temp=userPreferences.lastTemp;
-  if(temp<fishObj.temp[0]||temp>fishObj.temp[1]){
-    const alternatives=fishingData.filter(f=>temp>=f.temp[0]&&temp<=f.temp[1]&&!userPreferences.suggestedAlternatives.includes(f.fish));
-    if(alternatives.length){
-      const alt=randomChoice(alternatives);
-      userPreferences.suggestedAlternatives.push(alt.fish);
-      return `Conditions are not ideal for ${fishObj.fish} 🌡️. You might try ${alt.fish} 🐟 using ${randomChoice(alt.bait)} 🎣 instead!`;
-    }
-  }
-  return "";
+// Chat send
+sendBtn.addEventListener('click', () => {
+  const msg = userInput.value.trim();
+  if(!msg) return;
+  addMessage('user', msg);
+  const reply = fishlyReply(msg);
+  addMessage('fishly', reply);
+  userInput.value = '';
+});
+userInput.addEventListener('keypress', e => { if(e.key === 'Enter') sendBtn.click(); });
+
+// TensorFlow.js fish detection
+let model;
+async function loadFishModel() {
+  addMessage('fishly', 'Loading fish detection model...');
+  // Sample model URL (replace with actual trained fish model)
+  model = await tf.loadLayersModel('https://raw.githubusercontent.com/your-username/your-model/main/model.json');
+  addMessage('fishly', 'Fish detection model loaded ✅');
 }
 
-// --- MEMORY FOLLOW-UP ---
-function smartFollowUp(input,response){
-  if(userPreferences.failedAttempts.length){
-    return response+`\n\nI noticed you had trouble with ${userPreferences.failedAttempts.join(", ")}. Maybe try another bait or technique? 🎣`;
-  }
-  return response;
+// Identify fish from image
+async function identifyFish(img) {
+  if(!model) await loadFishModel();
+  const tensor = tf.browser.fromPixels(img).resizeNearestNeighbor([224,224]).toFloat().expandDims(0).div(255);
+  const prediction = await model.predict(tensor).data();
+  const maxIndex = prediction.indexOf(Math.max(...prediction));
+  const fishNames = ['Bass','Pike','Carp','Bluegill']; // must match model labels
+  return fishDB.find(f => f.name === fishNames[maxIndex]);
 }
 
-// --- FUZZY MATCH ---
-function fuzzyMatch(word,array){word=word.toLowerCase();return array.find(item=>item.toLowerCase().includes(word));}
+// Handle image upload
+uploadBtn.addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  img.onload = async () => {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img,0,0);
 
-// --- NLP RESPONSE ---
-function generateResponse(input){
-  input=input.toLowerCase().trim();
-  conversationMemory.push({role:"user",text:input});
-  if(conversationMemory.length>30) conversationMemory.shift();
+    const fish = await identifyFish(img);
 
-  // Replace synonyms
-  Object.keys(baitSynonyms).forEach(s=>{if(input.includes(s)) input=input.replace(s,baitSynonyms[s]);});
+    // Draw circle on detected fish (mock example)
+    const x = Math.floor(canvas.width/2 + Math.random()*50-25);
+    const y = Math.floor(canvas.height/2 + Math.random()*50-25);
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(x,y,20,0,2*Math.PI);
+    ctx.stroke();
 
-  // Friendly dynamic responses
-  if(/hello|hi|hey/.test(input)) return randomChoice(["Hey there! 🎣 Ready to catch some fish today?","Hi! 🐟 Let's talk bait and fish!","Hello! How's the fishing vibe today? 🛶"]);
-  if(/can i ask|bait question|question about bait/.test(input)) return "Absolutely! I can help you figure out the best bait for any fish 🐟.";
-  if(/joke/.test(input)) return randomChoice(jokes);
-  if(input.includes("top baits")) return [...new Set(fishingData.map(f=>f.bait).flat())].join(", ");
-  if(input.includes("all fish")) return fishingData.map(f=>f.fish).join(", ");
-  if(input.includes("all lures")) return [...new Set(fishingData.map(f=>f.bait).flat())].join(", ");
-  if(input.includes("daily plan")) return generateDailyPlan();
-
-  // Extract baits and fish using mini NLP
-  const allBait=fishingData.map(f=>f.bait).flat();
-  const allFish=fishingData.map(f=>f.fish);
-  const detectedBait=input.split(/[\s,]+/).map(w=>fuzzyMatch(w,allBait)).filter(Boolean);
-  const detectedFish=input.split(/[\s,]+/).map(w=>fuzzyMatch(w,allFish)).filter(Boolean);
-
-  // Track current fish/bait for follow-ups
-  if(detectedFish.length) userPreferences.currentFish=detectedFish[0];
-  if(detectedBait.length) userPreferences.currentBait=detectedBait[0];
-
-  // Handle bait queries
-  if(detectedBait.length){
-    const matchedFish=fishingData.filter(f=>f.bait.some(b=>detectedBait.includes(b)));
-    userPreferences.preferredBait.push(...detectedBait);
-    userPreferences.preferredBait=[...new Set(userPreferences.preferredBait)];
-    if(/not catching|failed|stuck/.test(input)) userPreferences.failedAttempts.push(...detectedBait);
-    let advice=matchedFish.map(f=>{
-      const alt=suggestAlternatives(f);
-      return `${f.fish} 🐟 usually bite on ${f.bait.join(", ")}. Try ${f.rigs.join(", ")} at ${f.depth} when water is around ${userPreferences.lastTemp}°F. Locations: ${f.location.join(", ")}. Conditions: ${userPreferences.lastWeather}, Time: ${userPreferences.lastTime}. ${getSeasonalTip()} ${alt}`;
-    }).join("\n\n");
-    return smartFollowUp(detectedBait.join(", "),advice);
-  }
-
-  // Handle fish queries
-  if(detectedFish.length){
-    const fish=fishingData.find(f=>f.fish===detectedFish[0]);
-    userPreferences.preferredFish.push(detectedFish[0]);
-    userPreferences.preferredFish=[...new Set(userPreferences.preferredFish)];
-    const alt=suggestAlternatives(fish);
-    return smartFollowUp(input,`${fish.fish} 🐟 usually bite on ${fish.bait.join(", ")}. Try ${fish.rigs.join(", ")} at ${fish.depth} when water is around ${userPreferences.lastTemp}°F. Locations: ${fish.location.join(", ")}. Conditions: ${userPreferences.lastWeather}, Time: ${userPreferences.lastTime}. ${getSeasonalTip()} ${alt}`);
-  }
-
-  // Handle vague/filler input
-  if(input.length<6 || /bro|okay|ok|yes|no|huh/.test(input)){
-    if(userPreferences.currentFish) return `Got it, focusing on ${userPreferences.currentFish} 🐟. Do you want bait suggestions or rigging tips? 🎣`;
-    if(userPreferences.currentBait) return `Thinking about ${userPreferences.currentBait} 🎣. Which fish are you targeting? 🐟`;
-    return randomChoice(["Could you clarify which fish or bait you're asking about?","Which fish or bait are we talking about today?","Let's pick a fish or bait to focus on! 🐟"]);
-  }
-
-  // Adaptive suggestion
-  if(userPreferences.preferredFish.length||userPreferences.preferredBait.length){
-    return `Based on your past queries, you might be interested in ${userPreferences.preferredFish.join(" or ")} using ${userPreferences.preferredBait.join(" or ")}. 🎣 Need details on rigs or depth?`;
-  }
-
-  return "Let's figure this out! Are you asking about a specific fish or bait? 🐟";
-}
-
-// --- SEND MESSAGE ---
-function sendMessage(){
-  const input=document.getElementById("userInput").value.trim();
-  if(!input) return;
-  addMessage("user",input);
-  document.getElementById("userInput").value="";
-  const response=generateResponse(input);
-  addMessage("bot",response);
-}
-
-// --- EVENTS ---
-document.getElementById("sendBtn").addEventListener("click",sendMessage);
-document.getElementById("userInput").addEventListener("keypress",(e)=>{if(e.key==="Enter") sendMessage();});
-document.querySelectorAll(".quick-btn").forEach(btn=>{btn.addEventListener("click",()=>{document.getElementById("userInput").value=btn.dataset.query;sendMessage();});});
-document.getElementById("updateConditionsBtn").addEventListener("click",updateConditions);
+    addMessage('fishly', `I analyzed your photo! Looks like a ${fish.name} 🐟. Best baits: ${fish.baits.join(', ')}. Fish at ${fish.depth} water in locations: ${fish.locations.join(', ')}.`);
+  };
+  img.src = URL.createObjectURL(file);
+});
 </script>
 </body>
 </html>
