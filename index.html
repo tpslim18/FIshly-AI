@@ -64,7 +64,7 @@ const jokes = ["Why did the fish blush? Because it saw the lake's bottom! 😂",
 const personalityPhrases = ["No worries buddy! 🎣","You're doing great! 🐟","Patience pays off! 🕰️","Let's catch some fish! 🛶","Looks like a big one is waiting! 😎","The fish are nibbling today! 🐠"];
 
 // --- MEMORY & ELAB ---
-let conversationMemory=[]; let lastTopic=null; let elaborationMode=false;
+let conversationMemory=[]; let elaborationMode=false;
 
 // --- TOGGLE ELAB ---
 document.getElementById("elabToggle").addEventListener("click",()=>{
@@ -85,6 +85,8 @@ function addMessage(sender,text){
   if(conversationMemory.length>30) conversationMemory.shift();
 }
 function getSeasonalTip(){ const month=new Date().getMonth()+1; const hour=new Date().getHours(); let timeTip=""; if(hour>=5 && hour<=9) timeTip="Early morning is prime time! 🌅"; else if(hour>=16 && hour<=20) timeTip="Late evening is great for bites! 🌇"; else timeTip="Midday fishing can be slow, but relaxing. 🛶"; if(month>=3 && month<=5) return "🌱 Spring is perfect! Fish are hungry after winter. "+timeTip; if(month>=6 && month<=8) return "☀️ Summer’s hot! Fish bite early morning or late evening. "+timeTip; if(month>=9 && month<=11) return "🍁 Fall is great for big bites as fish prep for winter. "+timeTip; return "❄️ Winter’s cold! Fish slow down, but it’s peaceful on the water. "+timeTip;}
+
+// --- FUZZY MATCH & KEYWORDS ---
 function fuzzyMatch(input,map){ input=input.toLowerCase(); for(let key in map){ if(map[key].some(word=>input.includes(word))) return key; } return null; }
 function matchKeywords(input){
   input=input.toLowerCase();
@@ -106,37 +108,77 @@ function matchKeywords(input){
   }
   return keywords;
 }
-function findFishMatches(keywords){
-  let matches=[];
-  for(let fish in fishingData){
-    let score=0;
-    if(keywords.fish.includes(fish)) score+=5;
-    if(fishingData[fish].bait.some(b=>keywords.bait.includes(b))) score+=3;
-    if(keywords.depth.includes(fishingData[fish].depth.replace(/[\u{1F300}-\u{1F6FF}]/gu,''))) score+=1;
-    if(keywords.location.some(loc=>fishingData[fish].location.includes(loc))) score+=1;
-    if(keywords.size.includes("big") && ["pike","muskie","salmon"].includes(fish)) score+=2;
-    if(score>0) matches.push({fish,score});
-  }
-  matches.sort((a,b)=>b.score-a.score);
-  return matches.map(m=>m.fish);
-}
-function updateLastTopic(fishOrBait){ if(fishOrBait) lastTopic=fishOrBait.toLowerCase(); }
-function generateResponse(input){
-  const elabKeywords=["tell me more","explain","why","elaborate"];
-  const wantsElab=elaborationMode || elabKeywords.some(w=>input.toLowerCase().includes(w));
-  const personality=personalityPhrases[Math.floor(Math.random()*personalityPhrases.length)];
-  if(input.toLowerCase().includes("joke")) return jokes[Math.floor(Math.random()*jokes.length)] + " " + personality + " " + getSeasonalTip();
-  const keywords=matchKeywords(input);
-  let matchedFishes=findFishMatches(keywords);
-  if(matchedFishes.length===0 && lastTopic){ matchedFishes.push(lastTopic); }
-  if(matchedFishes.length===0 && keywords.bait.length>0){ const baitMentioned=keywords.bait[0]; const possibleFish=Object.keys(fishingData).filter(f=>fishingData[f].bait.some(b=>b.toLowerCase().includes(baitMentioned.toLowerCase()))); if(possibleFish.length>0) matchedFishes.push(possibleFish[0]); updateLastTopic(baitMentioned); }
-  if(matchedFishes.length===0) matchedFishes.push("bass");
-  let responses=[];
-  matchedFishes.forEach(f=>{ updateLastTopic(f); const data=fishingData[f]; let res=`${capitalize(f)} 🐟 usually bite on ${data.bait.join(", ")}. Try ${data.techniques.join(", ")} at ${data.depth} when water is around ${data.waterTemp}.`; if(wantsElab) res+=`\nExtra tip: Use hook ${data.hook}, line ${data.line}, rig ${data.rig}. Fish in locations: ${data.location.join(", ")}. Conditions: ${data.conditions}. Seasons: ${data.season.join(", ")}.`; res+=` ${personality} ${getSeasonalTip()}`; responses.push(res); });
-  return responses.join("\n\n");
+
+// --- Bait to Fish Mapping ---
+function getFishByBait(userBait){
+    const baitLower = userBait.toLowerCase();
+    return Object.keys(fishingData).filter(fish =>
+        fishingData[fish].bait.some(b => b.toLowerCase().includes(baitLower))
+    );
 }
 
-// --- SEND & BUTTON EVENTS ---
+// --- Check if user wants all fish ---
+function wantsAllFish(input){
+    const keywords = ["all fish","what can i catch","list all"];
+    return keywords.some(k => input.toLowerCase().includes(k));
+}
+
+// --- GENERATE RESPONSE ---
+function generateResponse(input){
+    const personality = personalityPhrases[Math.floor(Math.random()*personalityPhrases.length)];
+    const elab = elaborationMode || /tell me more|explain|elaborate|why/i.test(input);
+    input = input.toLowerCase();
+
+    // Handle buttons/commands
+    if(input.includes("top baits") || input.includes("all baits")) {
+        let allBaits = new Set();
+        Object.values(fishingData).forEach(f=>f.bait.forEach(b=>allBaits.add(b)));
+        return `🎣 Top Baits: ${[...allBaits].join(", ")}. ${personality} ${getSeasonalTip()}`;
+    }
+    if(input.includes("all fish")) {
+        return `🐟 All Fish: ${Object.keys(fishingData).map(f=>capitalize(f)).join(", ")}. ${personality} ${getSeasonalTip()}`;
+    }
+    if(input.includes("all lures")) {
+        let lures = new Set();
+        Object.values(fishingData).forEach(f=>f.bait.forEach(b=>{
+            if(!b.toLowerCase().includes("worm") && !b.toLowerCase().includes("hot dog") && !b.toLowerCase().includes("corn") && !b.toLowerCase().includes("bread")){
+                lures.add(b);
+            }
+        }));
+        return `🎣 Lures: ${[...lures].join(", ")}. ${personality} ${getSeasonalTip()}`;
+    }
+
+    // Joke
+    if(/joke/i.test(input)) return jokes[Math.floor(Math.random()*jokes.length)] + " " + personality + " " + getSeasonalTip();
+
+    // Normal fishing Q&A
+    const keywords = matchKeywords(input);
+    let fishes = [];
+    if(keywords.fish.length>0) fishes = keywords.fish;
+    else if(keywords.bait.length>0){
+        keywords.bait.forEach(b=>{
+            const possibleFish = getFishByBait(b);
+            fishes = fishes.concat(possibleFish);
+        });
+        fishes = [...new Set(fishes)];
+    }
+    if(wantsAllFish(input) && keywords.bait.length>0){
+        let allFish = [];
+        keywords.bait.forEach(b=>{
+            allFish = allFish.concat(getFishByBait(b));
+        });
+        fishes = [...new Set(allFish)];
+    }
+    if(fishes.length===0) fishes = ["bass"];
+    return fishes.map(f=>{
+        const data = fishingData[f];
+        let res = `${capitalize(f)} 🐟 usually bite on ${data.bait.join(", ")}. Try ${data.techniques.join(", ")} at ${data.depth} when water is around ${data.waterTemp}.`;
+        if(elab) res += `\nExtra tip: Hook ${data.hook}, line ${data.line}, rig ${data.rig}. Fish in: ${data.location.join(", ")}. Conditions: ${data.conditions}. Seasons: ${data.season.join(", ")}.`;
+        return `${res} ${personality} ${getSeasonalTip()}`;
+    }).join("\n\n");
+}
+
+// --- EVENTS ---
 document.getElementById("sendBtn").addEventListener("click",()=>{
   const inputField=document.getElementById("userInput");
   const userText=inputField.value.trim();
@@ -147,6 +189,7 @@ document.getElementById("sendBtn").addEventListener("click",()=>{
   inputField.value="";
   inputField.focus();
 });
+
 document.querySelectorAll(".quick-btn").forEach(btn=>{
   btn.addEventListener("click",()=>{
     document.getElementById("userInput").value=btn.dataset.query;
