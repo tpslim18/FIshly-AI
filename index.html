@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fishing Buddy Chatbot</title>
+<title>🎣 Enhanced AI Fishing Buddy</title>
 <style>
 body { font-family: Arial, sans-serif; background:#e0f7fa; display:flex; justify-content:center; padding:20px; }
 #chat-container { max-width:600px; width:100%; }
-#chat { border:1px solid #ccc; padding:15px; height:450px; overflow-y:auto; background:#fff; border-radius:8px; }
+#chat { border:1px solid #ccc; padding:15px; height:500px; overflow-y:auto; background:#fff; border-radius:8px; }
 #userInput { width:65%; padding:8px; margin-top:10px; }
 #sendBtn { padding:8px; margin-left:5px; }
-.message { margin:10px 0; padding:5px 10px; border-radius:5px; max-width:90%; }
+.message { margin:10px 0; padding:5px 10px; border-radius:5px; max-width:90%; white-space:pre-line; }
 .user { background-color:#d0e7ff; color:#003366; }
 .bot { background-color:#fff9c4; color:#665500; }
 .quick-btn { padding:5px 10px; margin:2px; cursor:pointer; border-radius:5px; border:none; background:#4CAF50; color:white; }
@@ -18,7 +18,7 @@ body { font-family: Arial, sans-serif; background:#e0f7fa; display:flex; justify
 </head>
 <body>
 <div id="chat-container">
-  <h2>🎣 Your Fishing Buddy</h2>
+  <h2>🎣 Friendly Emoji AI Fishing Buddy</h2>
   <div id="chat"></div>
   <input type="text" id="userInput" placeholder="Ask me about fishing...">
   <button id="sendBtn">Send</button>
@@ -32,29 +32,29 @@ body { font-family: Arial, sans-serif; background:#e0f7fa; display:flex; justify
 </div>
 
 <script>
-// --- FULL FISHING DATASET ---
+// --- DATASET ---
 const fishingData = {
-  fish: {
-    carp: { bait:["Hot dogs","Corn","Bread","Dough balls"], depth:"Shallow", waterTemp:"65-80°F", conditions:"Calm lakes", season:["Spring","Summer","Fall"], location:["Lake","Pond"], techniques:["Bottom fishing","Float rig"], hook:"6-10", line:"6-12 lb", rig:"Hair rig" },
-    bass: { bait:["Worms","Crankbaits","Soft plastics","Spinnerbaits"], depth:"Mid-depth", waterTemp:"55-75°F", conditions:"Lakes, rivers", season:["Spring","Summer"], location:["Lake","River"], techniques:["Surface feeding","Jigging","Casting"], hook:"2-6", line:"8-14 lb", rig:"Texas rig" },
-    catfish: { bait:["Chicken liver","Worms","Shrimp","Stink bait"], depth:"Bottom", waterTemp:"70-85°F", conditions:"Rivers, muddy lakes", season:["Summer","Fall"], location:["River","Lake"], techniques:["Bottom fishing","Drift fishing"], hook:"2-4/0", line:"12-20 lb", rig:"Slip sinker rig" },
-    trout: { bait:["PowerBait","Worms","Insects"], depth:"Shallow-mid", waterTemp:"50-65°F", conditions:"Clear rivers and lakes", season:["Spring","Summer","Fall"], location:["River","Lake"], techniques:["Fly fishing","Spin fishing"], hook:"8-12", line:"4-8 lb", rig:"Single hook" },
-    salmon: { bait:["Salmon eggs","Shrimp","Plugs"], depth:"Mid-depth", waterTemp:"45-60°F", conditions:"Rivers and estuaries", season:["Fall"], location:["River","Coastal"], techniques:["Drift fishing","Trolling"], hook:"6-10", line:"8-12 lb", rig:"Egg loop rig" },
-    walleye: { bait:["Minnows","Nightcrawlers","Leeches"], depth:"Bottom-mid", waterTemp:"50-70°F", conditions:"Lakes and rivers", season:["Spring","Fall"], location:["Lake","River"], techniques:["Jigging","Trolling"], hook:"4-8", line:"6-10 lb", rig:"Slip sinker rig" },
-    perch: { bait:["Worms","Minnows"], depth:"Shallow-mid", waterTemp:"55-70°F", conditions:"Lakes and rivers", season:["Spring","Summer"], location:["Lake","River"], techniques:["Float fishing","Jigging"], hook:"10-14", line:"4-6 lb", rig:"Single hook" },
-    bluegill: { bait:["Worms","Insects","Corn"], depth:"Shallow", waterTemp:"65-80°F", conditions:"Lakes, ponds", season:["Spring","Summer"], location:["Lake","Pond"], techniques:["Float fishing","Panfish rigs"], hook:"12-16", line:"2-4 lb", rig:"Single hook" },
-    crappie: { bait:["Minnows","Jigs","Worms"], depth:"Shallow-mid", waterTemp:"60-75°F", conditions:"Lakes, rivers", season:["Spring","Summer"], location:["Lake","River"], techniques:["Jigging","Float fishing"], hook:"10-14", line:"2-4 lb", rig:"Single hook" },
-    pike: { bait:["Minnows","Spoons","Spinnerbaits"], depth:"Mid-depth", waterTemp:"55-70°F", conditions:"Lakes, rivers", season:["Spring","Summer","Fall"], location:["Lake","River"], techniques:["Casting","Trolling"], hook:"1/0-4/0", line:"12-20 lb", rig:"Leader rig" },
-    muskie: { bait:["Large spoons","Swimbaits","Topwater lures"], depth:"Mid-depth", waterTemp:"60-70°F", conditions:"Lakes", season:["Spring","Summer"], location:["Lake"], techniques:["Casting","Trolling"], hook:"4/0-7/0", line:"20-30 lb", rig:"Leader rig" },
-    redfish: { bait:["Shrimp","Crabs","Cut bait"], depth:"Shallow-mid", waterTemp:"70-85°F", conditions:"Coastal, Estuaries", season:["Summer","Fall"], location:["Coastal"], techniques:["Casting","Drift fishing"], hook:"1/0-3/0", line:"12-20 lb", rig:"Carolina rig" },
-    snook: { bait:["Shrimp","Live baitfish","Crabs"], depth:"Shallow-mid", waterTemp:"75-85°F", conditions:"Coastal, Estuaries", season:["Summer","Fall"], location:["Coastal"], techniques:["Casting","Drift fishing"], hook:"1/0-3/0", line:"12-20 lb", rig:"Carolina rig" },
-    tarpon: { bait:["Crabs","Shrimp","Live baitfish"], depth:"Surface-mid", waterTemp:"80-85°F", conditions:"Coastal, Estuaries", season:["Summer"], location:["Coastal"], techniques:["Casting","Live bait fishing"], hook:"5/0-8/0", line:"30-50 lb", rig:"Leader rig" },
-    halibut: { bait:["Herring","Squid","Octopus"], depth:"Bottom", waterTemp:"45-60°F", conditions:"Coastal, Ocean", season:["Spring","Summer"], location:["Coastal","Ocean"], techniques:["Bottom fishing","Drift fishing"], hook:"8/0-12/0", line:"40-60 lb", rig:"Circle hook rig" },
-    cod: { bait:["Herring","Mackerel","Squid"], depth:"Bottom", waterTemp:"40-55°F", conditions:"Ocean", season:["Winter","Spring"], location:["Ocean"], techniques:["Bottom fishing","Jigging"], hook:"6/0-10/0", line:"30-50 lb", rig:"Circle hook rig" }
-  }
+  carp: { bait:["Hot dogs 🍞","Corn 🌽","Bread 🍞","Dough balls 🍞"], depth:"Shallow 🏞️", waterTemp:"65-80°F 🌡️", conditions:"Calm lakes 🌊", season:["Spring 🌱","Summer ☀️","Fall 🍁"], location:["Lake 🏞️","Pond 🏞️"], techniques:["Bottom fishing ⬇️","Float rig 🏞️"], hook:"6-10", line:"6-12 lb", rig:"Hair rig" },
+  bass: { bait:["Worms 🪱","Crankbaits 🎣","Soft plastics 🟢","Spinnerbaits 🌀"], depth:"Mid-depth 🌊", waterTemp:"55-75°F 🌡️", conditions:"Lakes 🌊, rivers 🌊", season:["Spring 🌱","Summer ☀️"], location:["Lake 🏞️","River 🌊"], techniques:["Surface feeding 🏞️","Jigging 🎣","Casting 🎣"], hook:"2-6", line:"8-14 lb", rig:"Texas rig" },
+  catfish: { bait:["Chicken liver 🍗","Worms 🪱","Shrimp 🍤","Stink bait 💩"], depth:"Bottom ⬇️", waterTemp:"70-85°F 🌡️", conditions:"Rivers 🌊, muddy lakes 🌊", season:["Summer ☀️","Fall 🍁"], location:["River 🌊","Lake 🏞️"], techniques:["Bottom fishing ⬇️","Drift fishing 🛶"], hook:"2-4/0", line:"12-20 lb", rig:"Slip sinker rig" },
+  trout: { bait:["PowerBait 💥","Worms 🪱","Insects 🐜"], depth:"Shallow-mid 🏞️🌊", waterTemp:"50-65°F 🌡️", conditions:"Clear rivers 🌊 and lakes 🌊", season:["Spring 🌱","Summer ☀️","Fall 🍁"], location:["River 🌊","Lake 🏞️"], techniques:["Fly fishing 🎣","Spin fishing 🎣"], hook:"8-12", line:"4-8 lb", rig:"Single hook" },
+  salmon: { bait:["Salmon eggs 🥚","Shrimp 🍤","Plugs 🎣"], depth:"Mid-depth 🌊", waterTemp:"45-60°F 🌡️", conditions:"Rivers 🌊 and estuaries 🌊", season:["Fall 🍁"], location:["River 🌊","Coastal 🌊"], techniques:["Drift fishing 🛶","Trolling 🚤"], hook:"6-10", line:"8-12 lb", rig:"Egg loop rig" }
+  // ...add more fish/lures here
 };
 
-// --- FUN FEATURES ---
+// --- SYNONYMS FOR VAGUE INPUTS ---
+const synonyms = {
+  worms: ["wrigglers","nightcrawlers","wormz"],
+  hotdogs: ["hot dog","hotdogs","dog sausage"],
+  corn: ["maize"],
+  pond: ["small lake","muddy water","stagnant water"],
+  lake: ["big lake","open water"],
+  river: ["stream","creek","flowing water"],
+  something: ["fish","any fish","catch anything","something to catch"],
+  big: ["large","huge","monster","giant"]
+};
+
+// --- HUMOR & PERSONALITY ---
 const jokes = [
   "Why did the fish blush? Because it saw the lake's bottom! 😂",
   "What do you call a fish with no eyes? Fsh! 🐟",
@@ -62,83 +62,133 @@ const jokes = [
   "I tried fishing with glue once… I couldn’t let go of my bait! 😆"
 ];
 
+const personalityPhrases = [
+  "No worries buddy! 🎣",
+  "You're doing great! 🐟",
+  "Patience pays off! 🕰️",
+  "Let's catch some fish! 🛶",
+  "Looks like a big one is waiting! 😎",
+  "The fish are nibbling today! 🐠"
+];
+
+// --- SEASONAL TIP ---
 function getSeasonalTip() {
   const month = new Date().getMonth() + 1;
   if(month>=3 && month<=5) return "🌱 Spring is perfect! Fish are hungry after winter.";
-  if(month>=6 && month<=8) return "☀️ Summer’s hot! Try fishing early morning or late evening.";
+  if(month>=6 && month<=8) return "☀️ Summer’s hot! Fish bite early morning or late evening.";
   if(month>=9 && month<=11) return "🍁 Fall is great for big bites as fish prep for winter.";
   return "❄️ Winter’s cold! Fish slow down, but it’s peaceful on the water.";
 }
 
-// --- HELPER FUNCTIONS ---
-function capitalize(str){ return str.charAt(0).toUpperCase() + str.slice(1); }
+// --- MEMORY ---
+const conversationMemory = [];
 
-// improved fuzzy match that looks for multiple word matches and synonyms
-function findFish(query){
-  query = query.toLowerCase();
-  const fishNames = Object.keys(fishingData.fish);
-  let bestMatch = null;
-  let scoreMax = 0;
-  for(let fish of fishNames){
-    let score = 0;
-    const words = fish.toLowerCase().split(" ");
-    for(let w of words) if(query.includes(w)) score++;
-    // bonus: also count action words like "catch", "bait", "fish" as relevance
-    const actions = ["catch","fish","bait","use","like","attract","fishing"];
-    for(let a of actions) if(query.includes(a)) score += 0.2;
-    if(score > scoreMax){ scoreMax = score; bestMatch = fish; }
-  }
-  return scoreMax>0 ? bestMatch : null;
+// --- HELPERS ---
+function capitalize(str){ return str.charAt(0).toUpperCase() + str.slice(1); }
+function addMessage(sender,text){
+  const chatDiv=document.getElementById("chat");
+  const msgDiv=document.createElement("div");
+  msgDiv.classList.add("message",sender);
+  msgDiv.textContent=text;
+  chatDiv.appendChild(msgDiv);
+  chatDiv.scrollTop=chatDiv.scrollHeight;
+  conversationMemory.push({role:sender,text:text});
+  if(conversationMemory.length>10) conversationMemory.shift();
 }
 
-// --- CHATBOT LOGIC ---
-function getResponse(input){
-  input = input.toLowerCase();
-  const elaborateKeywords = ["tell me more","explain","why does that work","elaborate"];
-  const wantsElaboration = elaborateKeywords.some(word => input.includes(word));
+// --- EXPANDED PARSE FUNCTION WITH SYNONYMS & FUZZY MATCH ---
+function parseQuery(input){
+  input=input.toLowerCase();
+  for(let key in synonyms){
+    synonyms[key].forEach(syn=>{
+      if(input.includes(syn)) input=input.replace(new RegExp(syn,'g'), key);
+    });
+  }
 
-  if(input.includes("joke")) return jokes[Math.floor(Math.random()*jokes.length)] + " " + getSeasonalTip();
-  if(input.includes("top baits")) return "🎯 Some top baits today are: " + Object.keys(fishingData.fish).join(", ") + ". " + getSeasonalTip();
-  if(input.includes("all fish")) return "🐟 Here’s a list of fish you can target: " + Object.keys(fishingData.fish).join(", ") + ". " + getSeasonalTip();
-  if(input.includes("fishing tips")) return "💡 Pro tip: Match bait size to fish size, fish early morning or late evening, and enjoy your time outdoors! " + getSeasonalTip();
+  const keywords={fish:[],bait:[],depth:[],conditions:[],size:[]};
+  for(let fish in fishingData){
+    if(input.includes(fish)) keywords.fish.push(fish);
+    fishingData[fish].bait.forEach(b=>{
+      const plainB=b.replace(/[\u{1F300}-\u{1F6FF}]/gu,'').toLowerCase();
+      if(input.includes(plainB)) keywords.bait.push(b);
+    });
+    if(input.includes("shallow")) keywords.depth.push("Shallow");
+    if(input.includes("mid")) keywords.depth.push("Mid-depth");
+    if(input.includes("bottom")) keywords.depth.push("Bottom");
+    if(input.includes("lake")) keywords.conditions.push("Lake");
+    if(input.includes("pond")) keywords.conditions.push("Pond");
+    if(input.includes("river")) keywords.conditions.push("River");
+    if(input.includes("big")||input.includes("large")||input.includes("huge")) keywords.size.push("big");
+  }
+  return keywords;
+}
 
-  const fishMatch = findFish(input);
-  if(fishMatch){
-    const info = fishingData.fish[fishMatch];
-    let response = `Hey buddy! ${capitalize(fishMatch)} are fun to catch. They usually bite on ${info.bait.join(", ")}. Try ${info.techniques.join(", ")} at ${info.depth} when the water is around ${info.waterTemp}.`;
-    if(wantsElaboration) response += `\n\nExtra tip: Use hook ${info.hook}, line ${info.line}, and rig ${info.rig}. Patience pays off—sometimes they play hard to get!`;
-    response += " " + getSeasonalTip();
+function findBestMatch(keywords){
+  let best=null, score=0;
+  for(let fish in fishingData){
+    let s=0;
+    if(keywords.fish.includes(fish)) s+=3;
+    if(fishingData[fish].bait.some(b=>keywords.bait.includes(b))) s+=2;
+    if(keywords.depth.includes(fishingData[fish].depth.replace(/[\u{1F300}-\u{1F6FF}]/gu,''))) s+=1;
+    if(keywords.conditions.some(c=>fishingData[fish].location.includes(c))) s+=1;
+    if(keywords.size.includes("big") && ["pike","muskie","salmon"].includes(fish)) s+=2;
+    if(s>score){score=s; best=fish;}
+  }
+  return best;
+}
+
+function getLastFish(){
+  for(let i=conversationMemory.length-1;i>=0;i--){
+    if(conversationMemory[i].role==="bot"){
+      for(let fish in fishingData){
+        if(conversationMemory[i].text.toLowerCase().includes(fish)) return fish;
+      }
+    }
+  }
+  return null;
+}
+
+// --- RESPONSE ---
+function generateResponse(input){
+  const elabKeywords=["tell me more","explain","why","elaborate"];
+  const wantsElab=elabKeywords.some(w=>input.toLowerCase().includes(w));
+  const personality=personalityPhrases[Math.floor(Math.random()*personalityPhrases.length)];
+
+  if(input.toLowerCase().includes("joke")) return jokes[Math.floor(Math.random()*jokes.length)] + " " + personality + " " + getSeasonalTip();
+  if(input.toLowerCase().includes("top baits")) return "🎯 Top baits today: " + Object.keys(fishingData).join(", ") + ". " + personality + " " + getSeasonalTip();
+  if(input.toLowerCase().includes("all fish")) return "🐟 Fish you can catch: " + Object.keys(fishingData).join(", ") + ". " + personality + " " + getSeasonalTip();
+  if(input.toLowerCase().includes("fishing tips")) return "💡 Pro tip: Match bait size to fish size, fish early morning or late evening, and enjoy the outdoors! " + personality + " " + getSeasonalTip();
+
+  const keywords=parseQuery(input);
+  let fish=findBestMatch(keywords);
+  if(!fish) fish=getLastFish(); 
+  if(fish){
+    const info=fishingData[fish];
+    let response=`${personality} ${capitalize(fish)} 🐟 usually bite on ${info.bait.join(", ")}. Try ${info.techniques.join(", ")} at ${info.depth} when water is around ${info.waterTemp}.`;
+    if(wantsElab) response+=`\n\nExtra tip: Use hook ${info.hook}, line ${info.line}, rig ${info.rig}. Sometimes patience and a little luck pays off! 🎣`;
+    response+=" " + getSeasonalTip();
     return response;
   }
 
-  return "Hmm… I’m not quite sure. Try asking about a fish, bait, lure, or ask me for a joke! " + getSeasonalTip();
-}
-
-// --- DISPLAY MESSAGES ---
-function addMessage(sender,text){
-  const chatDiv = document.getElementById("chat");
-  const msgDiv = document.createElement("div");
-  msgDiv.classList.add("message",sender);
-  msgDiv.textContent = text;
-  chatDiv.appendChild(msgDiv);
-  chatDiv.scrollTop = chatDiv.scrollHeight;
+  // fallback for vague inputs
+  return `${personality} Hmm… Based on what I can tell, bass 🐟, carp 🐟, or bluegill 🐟 are great choices. Try worms 🪱, corn 🌽, or hot dogs 🍞 in shallow or mid-depth waters 🏞️🌊. ` + getSeasonalTip();
 }
 
 // --- QUICK BUTTONS ---
 document.querySelectorAll('.quick-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{ 
-    document.getElementById('userInput').value = btn.dataset.query; 
-    document.getElementById('sendBtn').click(); 
+  btn.addEventListener('click',()=>{
+    document.getElementById('userInput').value=btn.dataset.query;
+    document.getElementById('sendBtn').click();
   });
 });
 
-// --- SEND BUTTON ---
+// --- SEND ---
 document.getElementById("sendBtn").addEventListener("click",()=>{
-  const inputField = document.getElementById("userInput");
-  const userText = inputField.value.trim();
+  const inputField=document.getElementById("userInput");
+  const userText=inputField.value.trim();
   if(userText==="") return;
   addMessage("user","You: "+userText);
-  const botResponse = getResponse(userText);
+  const botResponse=generateResponse(userText);
   addMessage("bot","Buddy: "+botResponse);
   inputField.value="";
   inputField.focus();
