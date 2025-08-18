@@ -18,7 +18,7 @@ body { font-family: Arial, sans-serif; background:#e0f7fa; display:flex; justify
 </head>
 <body>
 <div id="chat-container">
-  <h2>🎣 Friendly Emoji AI Fishing Buddy</h2>
+  <h2>🎣 Friendly AI Fishing Buddy</h2>
   <div id="chat"></div>
   <input type="text" id="userInput" placeholder="Ask me about fishing...">
   <button id="sendBtn">Send</button>
@@ -39,10 +39,9 @@ const fishingData = {
   catfish: { bait:["Chicken liver 🍗","Worms 🪱","Shrimp 🍤","Stink bait 💩"], depth:"Bottom ⬇️", waterTemp:"70-85°F 🌡️", conditions:"Rivers 🌊, muddy lakes 🌊", season:["Summer ☀️","Fall 🍁"], location:["River 🌊","Lake 🏞️"], techniques:["Bottom fishing ⬇️","Drift fishing 🛶"], hook:"2-4/0", line:"12-20 lb", rig:"Slip sinker rig" },
   trout: { bait:["PowerBait 💥","Worms 🪱","Insects 🐜"], depth:"Shallow-mid 🏞️🌊", waterTemp:"50-65°F 🌡️", conditions:"Clear rivers 🌊 and lakes 🌊", season:["Spring 🌱","Summer ☀️","Fall 🍁"], location:["River 🌊","Lake 🏞️"], techniques:["Fly fishing 🎣","Spin fishing 🎣"], hook:"8-12", line:"4-8 lb", rig:"Single hook" },
   salmon: { bait:["Salmon eggs 🥚","Shrimp 🍤","Plugs 🎣"], depth:"Mid-depth 🌊", waterTemp:"45-60°F 🌡️", conditions:"Rivers 🌊 and estuaries 🌊", season:["Fall 🍁"], location:["River 🌊","Coastal 🌊"], techniques:["Drift fishing 🛶","Trolling 🚤"], hook:"6-10", line:"8-12 lb", rig:"Egg loop rig" }
-  // ...add more fish/lures here
 };
 
-// --- SYNONYMS FOR VAGUE INPUTS ---
+// --- SYNONYMS ---
 const synonyms = {
   worms: ["wrigglers","nightcrawlers","wormz"],
   hotdogs: ["hot dog","hotdogs","dog sausage"],
@@ -74,10 +73,16 @@ const personalityPhrases = [
 // --- SEASONAL TIP ---
 function getSeasonalTip() {
   const month = new Date().getMonth() + 1;
-  if(month>=3 && month<=5) return "🌱 Spring is perfect! Fish are hungry after winter.";
-  if(month>=6 && month<=8) return "☀️ Summer’s hot! Fish bite early morning or late evening.";
-  if(month>=9 && month<=11) return "🍁 Fall is great for big bites as fish prep for winter.";
-  return "❄️ Winter’s cold! Fish slow down, but it’s peaceful on the water.";
+  const hour = new Date().getHours();
+  let timeTip="";
+  if(hour>=5 && hour<=9) timeTip="Early morning is prime time! 🌅";
+  else if(hour>=16 && hour<=20) timeTip="Late evening is great for bites! 🌇";
+  else timeTip="Midday fishing can be slow, but relaxing. 🛶";
+
+  if(month>=3 && month<=5) return "🌱 Spring is perfect! Fish are hungry after winter. " + timeTip;
+  if(month>=6 && month<=8) return "☀️ Summer’s hot! Fish bite early morning or late evening. " + timeTip;
+  if(month>=9 && month<=11) return "🍁 Fall is great for big bites as fish prep for winter. " + timeTip;
+  return "❄️ Winter’s cold! Fish slow down, but it’s peaceful on the water. " + timeTip;
 }
 
 // --- MEMORY ---
@@ -96,7 +101,7 @@ function addMessage(sender,text){
   if(conversationMemory.length>10) conversationMemory.shift();
 }
 
-// --- EXPANDED PARSE FUNCTION WITH SYNONYMS & FUZZY MATCH ---
+// --- PARSE FUNCTION ---
 function parseQuery(input){
   input=input.toLowerCase();
   for(let key in synonyms){
@@ -123,6 +128,7 @@ function parseQuery(input){
   return keywords;
 }
 
+// --- FIND BEST MATCH ---
 function findBestMatch(keywords){
   let best=null, score=0;
   for(let fish in fishingData){
@@ -137,6 +143,7 @@ function findBestMatch(keywords){
   return best;
 }
 
+// --- LAST FISH MEMORY ---
 function getLastFish(){
   for(let i=conversationMemory.length-1;i>=0;i--){
     if(conversationMemory[i].role==="bot"){
@@ -161,17 +168,35 @@ function generateResponse(input){
 
   const keywords=parseQuery(input);
   let fish=findBestMatch(keywords);
-  if(!fish) fish=getLastFish(); 
-  if(fish){
-    const info=fishingData[fish];
-    let response=`${personality} ${capitalize(fish)} 🐟 usually bite on ${info.bait.join(", ")}. Try ${info.techniques.join(", ")} at ${info.depth} when water is around ${info.waterTemp}.`;
-    if(wantsElab) response+=`\n\nExtra tip: Use hook ${info.hook}, line ${info.line}, rig ${info.rig}. Sometimes patience and a little luck pays off! 🎣`;
-    response+=" " + getSeasonalTip();
-    return response;
+  let baitMentioned=keywords.bait.length>0?keywords.bait[0]:null;
+
+  if(!fish && baitMentioned){
+    // Suggest multiple fish for unknown bait
+    const possibleFish=Object.keys(fishingData).filter(f=>{
+      return fishingData[f].bait.some(b=>b.toLowerCase().includes("worm")||b.toLowerCase().includes("corn")||b.toLowerCase().includes("hot dog"));
+    });
+    return `${personality} Hmm… I haven't seen ${baitMentioned} used much, but ${possibleFish.join(", ")} might nibble. You could also try worms 🪱, corn 🌽, or hot dogs 🍞 for more success! ${getSeasonalTip()}`;
   }
 
-  // fallback for vague inputs
-  return `${personality} Hmm… Based on what I can tell, bass 🐟, carp 🐟, or bluegill 🐟 are great choices. Try worms 🪱, corn 🌽, or hot dogs 🍞 in shallow or mid-depth waters 🏞️🌊. ` + getSeasonalTip();
+  if(!fish) fish=getLastFish();
+
+  if(fish){
+    const info=fishingData[fish];
+    // Find all fish that match bait
+    let matchedFish=[fish];
+    if(baitMentioned){
+      matchedFish=Object.keys(fishingData).filter(f=>fishingData[f].bait.includes(baitMentioned));
+    }
+    const infoList=matchedFish.map(f=>{
+      const data=fishingData[f];
+      let res=`${capitalize(f)} 🐟 usually bite on ${data.bait.join(", ")}. Try ${data.techniques.join(", ")} at ${data.depth} when water is around ${data.waterTemp}.`;
+      if(wantsElab) res+=`\nExtra tip: Use hook ${data.hook}, line ${data.line}, rig ${data.rig}.`;
+      return res;
+    }).join("\n\n");
+    return `${personality} ${infoList} ${getSeasonalTip()}`;
+  }
+
+  return `${personality} Hmm… Based on what I can tell, bass 🐟, carp 🐟, or bluegill 🐟 are good choices. Try worms 🪱, corn 🌽, or hot dogs 🍞 in shallow or mid-depth waters 🏞️🌊. ${getSeasonalTip()}`;
 }
 
 // --- QUICK BUTTONS ---
