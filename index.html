@@ -2,131 +2,170 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🐟 Fishly-AI</title>
+<title>Fishly-AI 🎣</title>
 <style>
-body { font-family: Arial, sans-serif; background: #e0f7fa; color: #004d40; padding: 20px; }
-h1 { text-align: center; }
-#chat { border: 1px solid #004d40; padding: 10px; height: 400px; overflow-y: scroll; background: #b2dfdb; border-radius: 10px; }
-.user { color: #00695c; margin: 5px 0; }
-.fishly { color: #004d40; margin: 5px 0; }
-#inputArea { margin-top: 10px; display: flex; }
-#userInput { flex: 1; padding: 5px; font-size: 16px; }
-#sendBtn, #uploadBtn { padding: 5px 10px; margin-left: 5px; font-size: 16px; cursor: pointer; }
-#canvasWrapper { margin-top: 20px; text-align: center; }
+  body { font-family: Arial, sans-serif; background: #eef7f2; padding: 20px; }
+  #chat { height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; background: #fff; }
+  .message { margin: 5px 0; }
+  .user { color: #0066cc; }
+  .bot { color: #009933; }
+  #controls { margin-top: 10px; }
+  input[type=text] { width: 70%; padding: 5px; }
+  button { padding: 5px 10px; margin-left: 5px; }
+  .special-btn { margin: 2px; background: #28a745; color: #fff; border: none; cursor: pointer; padding: 5px 10px; }
+  canvas { margin-top: 10px; max-width: 100%; border: 1px solid #ccc; }
 </style>
 </head>
 <body>
-<h1>🐟 Fishly-AI</h1>
+
+<h1>Fishly-AI 🎣</h1>
 <div id="chat"></div>
-<div id="inputArea">
-  <input type="text" id="userInput" placeholder="Type your message..." />
-  <button id="sendBtn">Send</button>
-  <input type="file" id="uploadBtn" accept="image/*"/>
-</div>
-<div id="canvasWrapper">
-  <canvas id="waterCanvas" style="max-width:100%; border:1px solid #004d40; border-radius:10px;"></canvas>
+
+<div id="controls">
+  <input type="text" id="user-input" placeholder="Ask Fishly-AI about bait, fish, or upload images">
+  <button id="send-btn">Send</button>
 </div>
 
-<!-- TensorFlow.js -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.9.0/dist/tf.min.js"></script>
+<div id="buttons">
+  <button class="special-btn" id="top-baits-btn">Top Baits</button>
+  <button class="special-btn" id="top-fish-btn">Top Fish</button>
+  <button class="special-btn" id="top-lures-btn">Top Lures</button>
+  <button class="special-btn" id="fish-id-btn">Fish Identifier</button>
+  <button class="special-btn" id="casting-btn">Casting Analysis</button>
+</div>
+
+<input type="file" id="fish-upload" accept="image/*" style="display:none;" />
+<input type="file" id="casting-upload" accept="image/*" style="display:none;" />
+<canvas id="image-canvas"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
 
 <script>
-// Chat elements
-const chatDiv = document.getElementById('chat');
-const userInput = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
-const uploadBtn = document.getElementById('uploadBtn');
-const canvas = document.getElementById('waterCanvas');
+const chatEl = document.getElementById('chat');
+const userInputEl = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+
+function addMessage(sender, text) {
+  const msgEl = document.createElement('div');
+  msgEl.className = 'message ' + (sender === 'You' ? 'user' : 'bot');
+  msgEl.innerHTML = `<strong>${sender}:</strong> ${text}`;
+  chatEl.appendChild(msgEl);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+// Sample bait/fish/lure data
+const baitData = {
+  "worms": { fish: ["Bass", "Carp"], depth: "mid", waterTemp: "60-75°F", weather: "sunny" },
+  "corn": { fish: ["Carp"], depth: "shallow", waterTemp: "65-80°F", weather: "sunny" },
+  "hot dogs": { fish: ["Carp"], depth: "shallow", waterTemp: "65-80°F", weather: "sunny" }
+};
+
+const fishData = {
+  "bass": { bait: ["Worms", "Crankbaits", "Soft plastics", "Spinnerbaits"], depth: "mid", waterTemp: "55-75°F" },
+  "carp": { bait: ["Corn", "Hot dogs", "Bread"], depth: "shallow", waterTemp: "65-80°F" },
+  "pike": { bait: ["Spinnerbaits", "Crankbaits", "Minnows", "Leeches"], depth: "mid", waterTemp: "55-70°F" }
+};
+
+const lureData = ["Crankbaits", "Soft plastics", "Spinnerbaits", "Jigs"];
+
+// Fishly-AI smarter chat logic
+function getResponse(input) {
+  input = input.toLowerCase();
+  if(input.includes("top baits")) return Object.keys(baitData).join(", ");
+  if(input.includes("top fish")) return Object.keys(fishData).join(", ");
+  if(input.includes("top lures")) return lureData.join(", ");
+  
+  for(const bait in baitData){
+    if(input.includes(bait)){
+      const d = baitData[bait];
+      return `${d.fish.join(", ")} usually bite on ${bait}. Depth: ${d.depth}, Temp: ${d.waterTemp}, Weather: ${d.weather}.`;
+    }
+  }
+  for(const fish in fishData){
+    if(input.includes(fish)){
+      const d = fishData[fish];
+      return `${fish} usually bite on ${d.bait.join(", ")}. Depth: ${d.depth}, Temp: ${d.waterTemp}.`;
+    }
+  }
+
+  if(input.includes("hello") || input.includes("hi")) return "Hi there! 🐟 I can help you pick fish, bait, or even analyze your fishing photos!";
+  if(input.includes("bait")) return "Sure! Tell me which bait you have or want advice on.";
+  if(input.includes("fish")) return "Sure! Which fish are you trying to catch today?";
+  
+  return "Hmm… 🧐 Could you clarify which fish or bait you're asking about?";
+}
+
+// Send message
+sendBtn.addEventListener('click', () => {
+  const input = userInputEl.value;
+  if(!input) return;
+  addMessage("You", input);
+  const response = getResponse(input);
+  addMessage("Fishly-AI", response);
+  userInputEl.value = "";
+});
+
+// Top buttons
+document.getElementById('top-baits-btn').addEventListener('click', () => addMessage("Fishly-AI", Object.keys(baitData).join(", ")));
+document.getElementById('top-fish-btn').addEventListener('click', () => addMessage("Fishly-AI", Object.keys(fishData).join(", ")));
+document.getElementById('top-lures-btn').addEventListener('click', () => addMessage("Fishly-AI", lureData.join(", ")));
+
+// Image upload buttons
+const fishUploadEl = document.getElementById('fish-upload');
+const castingUploadEl = document.getElementById('casting-upload');
+const fishIdBtn = document.getElementById('fish-id-btn');
+const castingBtn = document.getElementById('casting-btn');
+const canvas = document.getElementById('image-canvas');
 const ctx = canvas.getContext('2d');
 
-// Fish database
-const fishDB = [
-  { name: 'Bass', baits: ['Worms', 'Crankbaits', 'Soft plastics', 'Spinnerbaits'], depth: 'Mid-depth', temp: '55-75°F', locations: ['Lake', 'River'] },
-  { name: 'Pike', baits: ['Spinnerbaits', 'Crankbaits', 'Minnows', 'Leeches'], depth: 'Mid-depth', temp: '55-70°F', locations: ['Lake', 'River'] },
-  { name: 'Carp', baits: ['Hot dogs', 'Corn', 'Bread', 'Dough balls'], depth: 'Shallow', temp: '65-80°F', locations: ['Lake', 'Pond'] },
-  { name: 'Bluegill', baits: ['Worms', 'Corn'], depth: 'Shallow', temp: '65-75°F', locations: ['Lake', 'Pond'] }
-];
-
-// Chat helper
-function addMessage(sender, text) {
-  const div = document.createElement('div');
-  div.className = sender;
-  div.innerHTML = `<strong>${sender === 'user' ? 'You' : 'Fishly-AI'}:</strong> ${text}`;
-  chatDiv.appendChild(div);
-  chatDiv.scrollTop = chatDiv.scrollHeight;
-}
-
-function fishlyReply(msg) {
-  msg = msg.toLowerCase();
-  if(msg.includes('hello') || msg.includes('hi')) return "Hey there! How's the fishing vibe today? 🛶";
-  if(msg.includes('bait')) return "Absolutely! I can help you pick a bait. Which fish are you targeting?";
-  if(msg.includes('pike')) return "Pike 🐟 usually bite on Spinnerbaits, Crankbaits, Minnows, Leeches. Try Casting, Trolling, Jigging at mid-depth. Early morning or late evening bites are hot!";
-  if(msg.includes('bass')) return "Bass 🐟 usually bite on Worms, Crankbaits, Soft plastics, Spinnerbaits. Try Surface feeding, Jigging, Casting at mid-depth. Morning or late evening is best!";
-  if(msg.includes('carp')) return "Carp 🐟 usually bite on Hot dogs, Corn, Bread, Dough balls. Try Bottom fishing or Float rigs at shallow water. Early morning bites are ideal!";
-  if(msg.includes('bluegill')) return "Bluegill 🐟 love Worms or Corn. Fish shallow water near structures in the morning or late evening.";
-  if(msg.includes('top baits')) {
-    let allBaits = [...new Set(fishDB.flatMap(f=>f.baits))];
-    return `Top baits: ${allBaits.join(', ')}`;
-  }
-  return "Hmm… 🧐 Could you clarify which fish or bait you're asking about? I can give fishing tips!";
-}
-
-// Chat send
-sendBtn.addEventListener('click', () => {
-  const msg = userInput.value.trim();
-  if(!msg) return;
-  addMessage('user', msg);
-  const reply = fishlyReply(msg);
-  addMessage('fishly', reply);
-  userInput.value = '';
-});
-userInput.addEventListener('keypress', e => { if(e.key === 'Enter') sendBtn.click(); });
-
-// TensorFlow.js fish detection
 let model;
-async function loadFishModel() {
-  addMessage('fishly', 'Loading fish detection model...');
-  // Sample model URL (replace with actual trained fish model)
-  model = await tf.loadLayersModel('https://raw.githubusercontent.com/your-username/your-model/main/model.json');
-  addMessage('fishly', 'Fish detection model loaded ✅');
-}
+mobilenet.load().then(m => { model = m; });
 
-// Identify fish from image
-async function identifyFish(img) {
-  if(!model) await loadFishModel();
-  const tensor = tf.browser.fromPixels(img).resizeNearestNeighbor([224,224]).toFloat().expandDims(0).div(255);
-  const prediction = await model.predict(tensor).data();
-  const maxIndex = prediction.indexOf(Math.max(...prediction));
-  const fishNames = ['Bass','Pike','Carp','Bluegill']; // must match model labels
-  return fishDB.find(f => f.name === fishNames[maxIndex]);
-}
+fishIdBtn.addEventListener('click', () => fishUploadEl.click());
+castingBtn.addEventListener('click', () => castingUploadEl.click());
 
-// Handle image upload
-uploadBtn.addEventListener('change', async e => {
+fishUploadEl.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if(!file) return;
   const img = new Image();
   img.onload = async () => {
     canvas.width = img.width;
     canvas.height = img.height;
-    ctx.drawImage(img,0,0);
+    ctx.drawImage(img, 0, 0);
+    if(model){
+      const predictions = await model.classify(img);
+      const topPrediction = predictions[0].className;
+      addMessage("Fishly-AI", `I think this fish might be: ${topPrediction}`);
+    } else {
+      addMessage("Fishly-AI", "Fish model not loaded yet!");
+    }
+  };
+  img.src = URL.createObjectURL(file);
+});
 
-    const fish = await identifyFish(img);
-
-    // Draw circle on detected fish (mock example)
-    const x = Math.floor(canvas.width/2 + Math.random()*50-25);
-    const y = Math.floor(canvas.height/2 + Math.random()*50-25);
+castingUploadEl.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  img.onload = async () => {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    // Simulated casting spot
+    const circleX = canvas.width * Math.random() * 0.8 + canvas.width * 0.1;
+    const circleY = canvas.height * Math.random() * 0.8 + canvas.height * 0.1;
+    const radius = 30;
     ctx.strokeStyle = 'red';
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(x,y,20,0,2*Math.PI);
+    ctx.arc(circleX, circleY, radius, 0, Math.PI*2);
     ctx.stroke();
-
-    addMessage('fishly', `I analyzed your photo! Looks like a ${fish.name} 🐟. Best baits: ${fish.baits.join(', ')}. Fish at ${fish.depth} water in locations: ${fish.locations.join(', ')}.`);
+    addMessage("Fishly-AI", "Casting spot recommended here! 🎯");
   };
   img.src = URL.createObjectURL(file);
 });
 </script>
+
 </body>
 </html>
