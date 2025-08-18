@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎣 Smart AI Fishing Buddy - NLP Edition</title>
+<title>🎣 Smart AI Fishing Buddy - Humanized Edition</title>
 <style>
 body { font-family: Arial, sans-serif; background:#e0f7fa; margin:0; padding:0; display:flex; flex-direction:column; height:100vh; }
 #chatContainer { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; }
@@ -68,7 +68,7 @@ const fishingData=[
 const jokes=["What do you call a fish with no eyes? Fsh! 🐟","Why did the fish blush? Because it saw the lake's bottom! 😆","Why are fish so smart? They spend all day in school! 🎓"];
 
 let conversationMemory=[];
-let userPreferences={preferredFish:[],preferredBait:[],lastWeather:"Sunny",lastTemp:70,lastTime:"Morning",failedAttempts:[],suggestedAlternatives:[]};
+let userPreferences={preferredFish:[],preferredBait:[],currentFish:null,currentBait:null,lastWeather:"Sunny",lastTemp:70,lastTime:"Morning",failedAttempts:[],suggestedAlternatives:[]};
 
 const baitSynonyms={ "dog sausage":"Hot dogs", "baitfish":"Minnows", "corn cob":"Corn", "bread dough":"Bread", "spinners":"Spinnerbaits", "hotdog":"Hot dogs" };
 
@@ -149,6 +149,10 @@ function generateResponse(input){
   const detectedBait=input.split(/[\s,]+/).map(w=>fuzzyMatch(w,allBait)).filter(Boolean);
   const detectedFish=input.split(/[\s,]+/).map(w=>fuzzyMatch(w,allFish)).filter(Boolean);
 
+  // Track current fish/bait for follow-ups
+  if(detectedFish.length) userPreferences.currentFish=detectedFish[0];
+  if(detectedBait.length) userPreferences.currentBait=detectedBait[0];
+
   // Handle bait queries
   if(detectedBait.length){
     const matchedFish=fishingData.filter(f=>f.bait.some(b=>detectedBait.includes(b)));
@@ -171,11 +175,11 @@ function generateResponse(input){
     return smartFollowUp(input,`${fish.fish} 🐟 usually bite on ${fish.bait.join(", ")}. Try ${fish.rigs.join(", ")} at ${fish.depth} when water is around ${userPreferences.lastTemp}°F. Locations: ${fish.location.join(", ")}. Conditions: ${userPreferences.lastWeather}, Time: ${userPreferences.lastTime}. ${getSeasonalTip()} ${alt}`);
   }
 
-  // Handle vague input
-  if(input.length<10){
-    let clarification="Hmm… 🧐 Could you clarify which fish or bait you're asking about?";
-    if(userPreferences.preferredFish.length) clarification+=` Maybe you want info on ${userPreferences.preferredFish.join(" or ")}?`;
-    return clarification;
+  // Handle vague/filler input
+  if(input.length<6 || /bro|okay|ok|yes|no|huh/.test(input)){
+    if(userPreferences.currentFish) return `Got it, focusing on ${userPreferences.currentFish} 🐟. Do you want bait suggestions or rigging tips? 🎣`;
+    if(userPreferences.currentBait) return `Thinking about ${userPreferences.currentBait} 🎣. Which fish are you targeting? 🐟`;
+    return randomChoice(["Could you clarify which fish or bait you're asking about?","Which fish or bait are we talking about today?","Let's pick a fish or bait to focus on! 🐟"]);
   }
 
   // Adaptive suggestion
