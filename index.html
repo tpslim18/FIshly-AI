@@ -14,14 +14,22 @@
     .btn{margin:0;padding:8px 12px;border:none;border-radius:10px;cursor:pointer;background:var(--accent2);color:#fff;font-weight:600}
     .btn:hover{filter:brightness(.95)}
     .wrap{padding:10px;max-width:1100px;margin:0 auto}
-    #chat{height:360px;overflow-y:auto;padding:10px;background:#fff;margin:10px 0;border-radius:10px;border:1px solid var(--border)}
+    #chat{height:420px;overflow-y:auto;padding:10px;background:#fff;margin:10px 0;border-radius:10px;border:1px solid var(--border)}
     .row{display:flex;margin:8px 0}
     .bubble{max-width:80%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.04)}
     .user .bubble{margin-left:auto;background:var(--accent2);color:#fff}
     .bot  .bubble{margin-right:auto;background:#fff;border:1px solid var(--border)}
     .composer{display:flex;gap:8px}
     #msg{flex:1;padding:10px;border:1px solid var(--border);border-radius:10px}
+    small{color:var(--muted)}
+    a{color:#0369a1}
 
+    /* Chips */
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .chip{border:1px solid var(--border);background:#f8fafc;padding:6px 10px;border-radius:999px;cursor:pointer;font-size:.9rem}
+    .chip:hover{background:#eef2f7}
+
+    /* dialogs */
     dialog{border:0;border-radius:12px;padding:0;max-width:900px;width:92vw}
     dialog::backdrop{background:rgba(0,0,0,.35)}
     .modal{padding:12px}
@@ -33,8 +41,6 @@
     .search input, select, input[type=number]{padding:8px;border:1px solid var(--border);border-radius:8px;width:100%}
     summary{cursor:pointer}
     ol{margin:6px 0 0 18px}
-    small{color:var(--muted)}
-    a{color:#0369a1}
   </style>
 </head>
 <body>
@@ -55,10 +61,10 @@
   <main class="wrap">
     <div id="chat"></div>
     <div class="composer">
-      <input id="msg" placeholder="Ask about species, baits, seasons, temps, knots, or a waterbody…" />
+      <input id="msg" placeholder="Tell me what you want to catch, your waterbody, temp, or bait…" />
       <button class="btn" id="send">Send</button>
     </div>
-    <small>Tip: Try “bass”, “I want to catch carp”, “what fish eat nightcrawlers”, or “what fish are in Lake Michigan”.</small>
+    <small>Try: “I want to catch bluegill”, “what can I catch using corn”, “it’s 80°F in a river”, or “what fish are in Lake Michigan”.</small>
   </main>
 
   <!-- Top Spots by State -->
@@ -115,20 +121,35 @@
   </div></dialog>
 
 <script>
-// ===== helpers =====
+// ===== helpers & state =====
 const $ = s => document.querySelector(s);
 const chat = $('#chat');
-function addMsg(role, text){
+const state = {
+  topic: null,     // e.g., {type:'species', name:'Bluegill'}
+  context: {}      // e.g., {season:'summer', water:'lake', tempF:78}
+};
+function addMsg(role, text, chips = null){
   const row = document.createElement('div');
   row.className = 'row ' + (role==='bot'?'bot':'user');
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.textContent = text;
   row.appendChild(bubble);
+  if(Array.isArray(chips) && chips.length){
+    const wrap = document.createElement('div');
+    wrap.className = 'chips';
+    chips.forEach(c=>{
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.textContent = c.label;
+      b.setAttribute('data-chip', JSON.stringify(c));
+      wrap.appendChild(b);
+    });
+    row.appendChild(wrap);
+  }
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
-// show JS errors in the chat to help diagnose
 window.addEventListener('error', (e)=>{ try{ addMsg('bot','⚠️ Script error: '+(e?.message||'unknown')); }catch(_){} });
 
 // ===== data =====
@@ -286,20 +307,12 @@ function buildDB(){
 const DB = buildDB();
 
 // greet
-addMsg('bot', "Hello, I’m Fishly-AI — your AI fishing buddy. Ask me about species, baits, seasons, water temps, or anything freshwater. I’ll keep it friendly, helpful, and a little punny. 🎣");
+addMsg('bot', "Hello, I’m Fishly-AI — your AI fishing buddy. I’ll keep it friendly, helpful, and a little punny. 🎣  What are we chasing today?");
 
-// ===== tiny NLP helpers =====
-function norm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim(); }
+// ===== small NLP =====
+function norm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9\s°fcm]/g,' ').replace(/\s+/g,' ').trim(); }
 function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
-
-// Generic buckets so “bass” works
-const GENERIC_TARGETS = {
-  bass: ['Largemouth Bass','Smallmouth Bass'],
-  catfish: ['Channel Catfish','Flathead Catfish'],
-  panfish: ['Bluegill','Crappie'],
-  trout: ['Rainbow Trout','Brown Trout','Brook Trout'],
-  carp: ['Common Carp']
-};
+const GENERIC_TARGETS = { bass:['Largemouth Bass','Smallmouth Bass'], catfish:['Channel Catfish','Flathead Catfish'], panfish:['Bluegill','Crappie'], trout:['Rainbow Trout','Brown Trout','Brook Trout'], carp:['Common Carp'] };
 
 // ===== chat wiring =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -323,68 +336,168 @@ document.addEventListener('DOMContentLoaded', () => {
   // buttons & dialogs
   const dlgKnots=$('#dlgKnots'), dlgEstimator=$('#dlgEstimator'), dlgRecords=$('#dlgRecords'), dlgRegs=$('#dlgRegs'), dlgSpots=$('#dlgSpots');
   const safeShow = dlg => { try{ if(dlg?.showModal) dlg.showModal(); else dlg?.setAttribute('open',''); }catch(e){ addMsg('bot','⚠️ Modal error: '+e.message); } };
-
   const on=(sel,fn)=>{ const el=$(sel); if(el) el.addEventListener('click', fn); };
+
   on('#btnKnots',     ()=>{ renderKnots();     safeShow(dlgKnots); });
-  on('#btnFact',      ()=>{ addMsg('bot', "Here's a random fishing fact:"); addMsg('bot', rand(DB.facts)); });
+  on('#btnFact',      ()=>{ addMsg('bot', "Here’s a random fishing fact:"); addMsg('bot', rand(DB.facts)); });
   on('#btnRoulette',  ()=>{ const c=rand(DB.baitRoulette); addMsg('bot','🎲 Rolling the dice...'); addMsg('bot', `Roulette says: ${c.name} — ${c.tip}`); });
   on('#btnEstimator', ()=>{ renderEstimator(); safeShow(dlgEstimator); });
   on('#btnRecords',   ()=>{ renderRecords();   safeShow(dlgRecords); });
   on('#btnRegs',      ()=>{ renderRegs();      safeShow(dlgRegs); });
   on('#btnSpots',     ()=>{ renderSpots();     safeShow(dlgSpots); });
 
-  // proper close handlers (avoid undefined globals)
   on('#btnCloseKnots',     ()=> dlgKnots?.close());
   on('#btnCloseEstimator', ()=> dlgEstimator?.close());
   on('#btnCloseRecords',   ()=> dlgRecords?.close());
   on('#btnCloseRegs',      ()=> dlgRegs?.close());
   on('#btnCloseSpots',     ()=> dlgSpots?.close());
+
+  // Quick-reply chips click (event delegation)
+  chat.addEventListener('click', (e)=>{
+    const el = e.target.closest('.chip');
+    if(!el) return;
+    const payload = el.getAttribute('data-chip');
+    if(!payload) return;
+    const chip = JSON.parse(payload);
+    handleChip(chip);
+  });
 });
 
-// ===== intent router =====
+// ===== router =====
 function handleUserInput(input){
   const t = norm(input);
 
-  // 1) explicit species names/aliases
+  // 1) explicit species / aliases
   const sp = detectSpecies(t);
-  if(sp){ addMsg('bot', renderSpeciesProfile(sp)); return; }
+  if(sp){ state.topic = {type:'species', name:sp}; return replySpeciesBrief(sp); }
 
-  // 2) generic buckets (bass/carp/catfish/trout/panfish)
+  // 2) generic buckets (bass/carp/etc.)
   const generic = Object.keys(GENERIC_TARGETS).find(k => t.includes(k));
   if(generic){
     const list = GENERIC_TARGETS[generic];
-    if(list.length===1){ addMsg('bot', renderSpeciesProfile(list[0])); }
-    else{
-      const choices = list.map(n=>'• '+n).join('\n');
-      addMsg('bot', `${capitalize(generic)} could be:\n${choices}\n\nTell me which one for specifics. Fast primer: cover water with a spinnerbait/crank to find fish, then slow down with a jig or worm after a bite.`);
-    }
-    return;
+    state.topic = {type:'species', name:list[0]};
+    return replySpeciesBrief(list[0], {note:`Could also mean ${list.slice(1).join(', ')}.`});
   }
 
-  // 3) how-to / what to use for {species}
-  if(/(how\s+(to|do)\s+(i\s+)?catch|what\s+(should\s+i\s+)?(use|throw)|best\s+(lure|bait)\s+for)/.test(t)){
-    const maybe = detectSpecies(t); if(maybe){ addMsg('bot', renderSpeciesProfile(maybe)); return; }
-  }
+  // 3) bait queries
+  const baitAns = baitQuery(t);
+  if(baitAns){ return; }
 
-  // 4) bait → which fish
-  const baitAns = handleBaitQuery(t); if(baitAns){ addMsg('bot', baitAns); return; }
+  // 4) temperature queries
+  const tempAns = tempQuery(t);
+  if(tempAns){ return; }
 
-  // 5) waterbody → what lives there
-  const waterAns = handleWaterbodyQuery(t); if(waterAns){ addMsg('bot', waterAns); return; }
+  // 5) waterbody queries
+  const waterAns = waterbodyQuery(t);
+  if(waterAns){ return; }
 
-  // 6) lightweight conditions coaching
-  const cond = conditionAdvice(t); if(cond){ addMsg('bot', cond); return; }
+  // 6) light conditions coaching
+  const cond = conditionAdvice(t);
+  if(cond){ addMsg('bot', cond); return; }
 
-  // 7) tool hints
-  if(t.includes('knot')) { addMsg('bot',"Knots? Tap ‘Knot Tutor’ above for step-by-steps (Palomar, Uni, FG, Snell…)."); return; }
-  if(t.includes('record')) { addMsg('bot',"Tap ‘Records’ for quick all-tackle notes; verify at IGFA for the latest."); return; }
-  if(t.includes('regulation')||t.includes('legal')||t.includes('limit')) { addMsg('bot',"Tap ‘Regulations’ and pick your state — rules change by season/waterbody."); return; }
-
-  // 8) fallback
-  addMsg('bot', "Tell me the species or situation (season, water clarity, cover), and I’ll recommend baits, retrieves, and setups. Or tap a tool above.");
+  // Fallback
+  addMsg('bot', "Gotcha. Tell me a species (e.g., bluegill), a bait (“using corn”), a waterbody, or the water temp — I’ll tune a plan and we’ll refine from there.");
 }
 
-// ===== detectors & responders =====
+// ===== conversational replies =====
+function replySpeciesBrief(name, opts={}){
+  const s = DB.species[name]; if(!s){ addMsg('bot', `I know ${name}, but I don’t have tips stored yet.`); return; }
+  const opener = `Nice choice — **${name}** are fun. Quick take: they’re active around ${s.spawn?.tempF ? `${s.spawn.tempF[0]}–${s.spawn.tempF[1]}°F`:'seasonal shifts'}, and they love simple presentations.`;
+  const tip = shortStarter(name);
+  const extra = opts.note ? `\n${opts.note}` : '';
+  addMsg('bot',
+    `${opener}\nStarter idea: ${tip}${extra}\n\nWant me to tailor it? Pick a season and water type.`,
+    chipsForFollowup()
+  );
+}
+
+function shortStarter(name){
+  switch(name){
+    case 'Bluegill': return 'worm or small jig under a bobber; edges of weeds or shallow beds.';
+    case 'Largemouth Bass': return 'spinnerbait to find them, then slow down with a Texas-rig or jig on cover.';
+    case 'Smallmouth Bass': return 'tube or ned on rock flats; jerkbait on windy points.';
+    case 'Walleye': return 'jig + minnow on current seams; low-light cranks.';
+    case 'Common Carp': return 'hair-rigged corn or pack bait; be stealthy near flats.';
+    case 'Crappie': return 'minnow or small tube near brush/docks; slow and steady.';
+    default: return 'start moving to find them, then slow down once you get a bite.';
+  }
+}
+
+function chipsForFollowup(){
+  return [
+    {label:'Spring',   type:'set', key:'season', value:'spring'},
+    {label:'Summer',   type:'set', key:'season', value:'summer'},
+    {label:'Fall',     type:'set', key:'season', value:'fall'},
+    {label:'Winter',   type:'set', key:'season', value:'winter'},
+    {label:'Lake',     type:'set', key:'water',  value:'lake'},
+    {label:'River',    type:'set', key:'water',  value:'river'},
+    {label:'Pond',     type:'set', key:'water',  value:'pond'},
+    {label:'More detail', type:'more'}
+  ];
+}
+
+function handleChip(chip){
+  if(chip.type==='set'){
+    state.context[chip.key] = chip.value;
+    addMsg('user', chip.label);
+    return refinePlan();
+  }
+  if(chip.type==='more'){
+    addMsg('user', 'More detail');
+    const name = state.topic?.name;
+    if(!name) return addMsg('bot','Tell me a species and I’ll go deeper.');
+    addMsg('bot', longSpecies(name));
+  }
+}
+
+function refinePlan(){
+  const name = state.topic?.name;
+  if(!name) return;
+  const season = state.context.season;
+  const water  = state.context.water;
+
+  let lines = [`Dialing it in for ${name}:`];
+
+  // season tactic
+  const s = DB.species[name];
+  if(season && s?.tactics?.[season]){
+    lines.push(`• **${capitalize(season)}** — ${s.tactics[season][0]}`);
+  }
+
+  // water hint
+  if(water){
+    if(water==='lake') lines.push('• **Lake** — work points/weed edges; fish roam with bait.');
+    if(water==='river') lines.push('• **River** — target current seams/eddies; cast slightly upstream and swing through.');
+    if(water==='pond') lines.push('• **Pond** — fish the shade, windblown bank, and any visible cover.');
+  }
+
+  // generic close
+  lines.push('Want me to pick a knot or a bait for this setup?');
+
+  addMsg('bot', lines.join('\n'), [
+    {label:'🎲 Bait Roulette', type:'action', fn:'roulette'},
+    {label:'Open Knot Tutor', type:'action', fn:'knots'}
+  ]);
+}
+
+function longSpecies(name){
+  const s = DB.species[name];
+  if(!s) return 'I don’t have the deep dive for that species yet.';
+  const parts = [];
+  parts.push(`${name} (${s.sci}) — Diet: ${(s.diet||[]).join(', ')||'varied'}.`);
+  if(s.spawn) parts.push(`Spawning ~${s.spawn.tempF[0]}–${s.spawn.tempF[1]}°F (${s.spawn.months.join(', ')}).`);
+  if(s.lures) parts.push(`Go-to baits: ${s.lures.join(', ')}.`);
+  if(s.tactics){
+    parts.push('Seasonal pointers:');
+    for(const k of ['spring','summer','fall','winter']){
+      if(s.tactics[k]) parts.push(`• ${capitalize(k)}: ${s.tactics[k].join('; ')}`);
+    }
+  }
+  if(name==='Common Carp') parts.push('Rig tip: hair rig with sweet corn or pack bait; size 4–8 hooks; 12–20 lb line.');
+  return parts.join('\n');
+}
+
+// ===== intent helpers =====
 function detectSpecies(t){
   for(const [name, entry] of Object.entries(DB.species)){
     const terms = [name.toLowerCase(), ...(entry.aliases||[]).map(x=>x.toLowerCase())];
@@ -393,48 +506,67 @@ function detectSpecies(t){
   return null;
 }
 
-function renderSpeciesProfile(name){
-  const s = DB.species[name]; if(!s) return `I know ${name} in spirit, not in data yet.`;
-  const lines = [];
-  lines.push(`🎯 ${name} (${s.sci})`);
-  if(s.spawn) lines.push(`Spawning ~${s.spawn.tempF[0]}–${s.spawn.tempF[1]}°F, months ${s.spawn.months.join(', ')}`);
-  if(s.diet)  lines.push('Diet: '+s.diet.join(', '));
-  if(s.lures) lines.push('Go-to baits: ' + s.lures.join(', '));
-  if(s.tactics){
-    lines.push('\nStarter plan:');
-    if(s.tactics.spring) lines.push('• Spring: ' + s.tactics.spring[0]);
-    if(s.tactics.summer) lines.push('• Summer: ' + s.tactics.summer[0]);
-    if(s.tactics.fall)   lines.push('• Fall: '   + s.tactics.fall[0]);
-    if(s.tactics.winter) lines.push('• Winter: ' + s.tactics.winter[0]);
-  }
-  if(name==='Common Carp') lines.push('\nRig tips: hair rig with sweet corn or pack bait; size 4–8 hooks; 12–20 lb line. Stealth matters.');
-  return lines.join('\n');
-}
+// ===== queries (bait, temp, waterbody, conditions) =====
+function baitQuery(t){
+  const mentions = /(what|which).*(catch|fish).*?(using|with|on)\s|.*\b(using|with|on)\b\s|what.*fish.*(eat|like|attracted|hit|bite)/;
+  if(!mentions.test(t)) return null;
 
-function handleBaitQuery(t){
-  if(!/(what|which).*(fish).*?(attracted|bite|hit|eat|go for)|bait.*(work|good)/.test(t)) return null;
   for(const [bait, info] of Object.entries(DB.baitToSpecies)){
     const aliases = [bait, ...(info.aliases||[])].map(x=>x.toLowerCase());
     if(aliases.some(a=>t.includes(a))){
-      const list = info.species.map(s=>`• ${s}`).join('\n');
-      return `Anglers often catch fish on ${bait} like:\n${list}\n\nWant details on one of these? Type the species name and I’ll break down tactics, temps, and tackle.`;
+      state.topic = {type:'bait', name:bait};
+      addMsg('bot',
+        `On **${bait}**, you’ll often see:\n• ${info.species.join('\n• ')}\n\nWant to focus on one? Pick a species or tap a season/water to tune it.`,
+        chipsForFollowup()
+      );
+      return true;
     }
   }
+  addMsg('bot', 'Name a bait (e.g., nightcrawler, corn, spinnerbait) and I’ll list species that commonly hit it.');
   return null;
 }
 
-function handleWaterbodyQuery(t){
+function tempQuery(t){
+  const m = t.match(/(\d{2,3})\s*°?\s*([fc])?/);
+  if(!m) return null;
+  let val = parseInt(m[1],10);
+  const unit = m[2] || 'f';
+  const tempF = unit==='c' ? (val*9/5+32) : val;
+
+  const active=[];
+  for(const [name,s] of Object.entries(DB.species)){
+    if(!s.spawn?.tempF) continue;
+    const [lo,hi]=s.spawn.tempF;
+    if(tempF>=(lo-5)&&tempF<=(hi+5)) active.push(name);
+  }
+  let bandHint='';
+  if(tempF>=75) bandHint='Warm bite: Largemouth/Smallmouth early/late, Bluegill, Channel Catfish, Carp.';
+  else if(tempF>=60) bandHint='Mixed bite: Bass active, Bluegill/Crappie good, Walleye edges/dusk.';
+  else if(tempF>=45) bandHint='Coolwater: Walleye/trout shine; smallmouth on jerks/tubes.';
+  else bandHint='Cold: go finesse (ned, hair jigs); trout best in many waters.';
+
+  addMsg('bot',
+    `~${Math.round(tempF)}°F water. ${bandHint}\nWant a custom plan? Pick a species, then season/water.`,
+    chipsForFollowup()
+  );
+  return true;
+}
+
+function waterbodyQuery(t){
   if(!/(what).*(fish).*(in|at)|what.*(catch).*if.*(fish)/.test(t)) return null;
   for(const [wb, info] of Object.entries(DB.waterbodies)){
     if(t.includes(wb.toLowerCase())){
-      const species = info.species.join(', ');
-      const note = info.note ? `\nNote: ${info.note}` : '';
-      return `Typical species for ${wb}: ${species}.${note}\n(These are common reports; always verify local surveys and regs.)`;
+      state.topic = {type:'waterbody', name:wb};
+      addMsg('bot',
+        `Common in **${wb}**: ${info.species.join(', ')}.\nNote: ${info.note||'patterns vary.'}\nPick a target and I’ll dial in gear and retrieves.`,
+        chipsForFollowup()
+      );
+      return true;
     }
   }
-  if(t.includes('river')){ const g=DB.waterbodies['Generic River']; return `Common river species: ${g.species.join(', ')}. ${g.note||''}`; }
-  if(t.includes('pond')){ const g=DB.waterbodies['Generic Pond'];  return `Common pond species: ${g.species.join(', ')}. ${g.note||''}`; }
-  if(t.includes('lake')){ const g=DB.waterbodies['Generic Lake'];  return `Common lake species: ${g.species.join(', ')}. ${g.note||''}`; }
+  if(t.includes('river')){ addMsg('bot', 'Rivers: Smallmouth, Walleye/Sauger, Channel/Flathead Catfish, Carp. Pick one to tune it.', chipsForFollowup()); return true; }
+  if(t.includes('pond')){ addMsg('bot', 'Ponds: Largemouth, Bluegill, Crappie, Channel Catfish. Pick one to tune it.', chipsForFollowup()); return true; }
+  if(t.includes('lake')){ addMsg('bot', 'Lakes: Largemouth/Smallmouth, Walleye (north), Perch (north), Panfish, Catfish, Carp. Pick a species.', chipsForFollowup()); return true; }
   return null;
 }
 
@@ -447,12 +579,33 @@ function conditionAdvice(t){
   if(clarity) chunks.push('Water → ' + (DB.conditions.clarity[clarity]||''));
   if(cover)   chunks.push('Cover → ' + (DB.conditions.cover[cover]||'')); 
   if(!chunks.length) return null;
-  return chunks.join('\n') + '\n\nBonus: Tap 🎲 Bait Roulette for inspiration.';
+  return chunks.join('\n') + '\n\nNeed a bait? Tap 🎲 Bait Roulette.';
 }
 
-// ===== buttons/features =====
+// ===== chips actions =====
+function handleActionChip(fn){
+  if(fn==='roulette'){ const c=rand(DB.baitRoulette); addMsg('bot','🎲 Rolling the dice...'); addMsg('bot', `Roulette says: ${c.name} — ${c.tip}`); }
+  if(fn==='knots'){ renderKnots(); $('#dlgKnots')?.showModal(); }
+}
+function handleChip(chip){
+  if(chip.type==='set'){
+    state.context[chip.key] = chip.value;
+    addMsg('user', chip.label);
+    return refinePlan();
+  }
+  if(chip.type==='more'){
+    addMsg('user','More detail');
+    const name = state.topic?.name;
+    if(!name) return addMsg('bot','Tell me a species and I’ll go deeper.');
+    addMsg('bot', longSpecies(name));
+  }
+  if(chip.type==='action'){ handleActionChip(chip.fn); }
+}
+
+// ===== utilities =====
 function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
+// ===== features =====
 function renderKnots(){
   const grid = document.getElementById('knotGrid'); if(!grid) return; grid.innerHTML='';
   for(const [name,k] of Object.entries(DB.knots)){
@@ -480,9 +633,7 @@ function renderEstimator(){
 
 function renderRecords(){
   const box = document.getElementById('recordsList'); if(!box) return;
-  box.innerHTML = [
-    ...DB.records.map(r=>`<div class="card"><strong>${r.species}</strong><div>${r.note}</div></div>`)
-  ].join('');
+  box.innerHTML = DB.records.map(r=>`<div class="card"><strong>${r.species}</strong><div>${r.note}</div></div>`).join('');
 }
 
 function renderRegs(){
