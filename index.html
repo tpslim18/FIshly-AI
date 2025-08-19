@@ -40,7 +40,7 @@
 <body>
   <header>
     <h1>Fishly-AI 🎣</h1>
-    <p style="margin:6px 0 0">Hello, I’m Fishly‑AI — your AI fishing buddy!</p>
+    <p style="margin:6px 0 0">Hello, I’m Fishly-AI — your AI fishing buddy!</p>
     <div id="buttons">
       <button class="btn" id="btnKnots">Knot Tutor</button>
       <button class="btn" id="btnFact">Random Fact</button>
@@ -58,7 +58,7 @@
       <input id="msg" placeholder="Ask about species, baits, seasons, temps, knots, or a waterbody…" />
       <button class="btn" id="send">Send</button>
     </div>
-    <small>Tip: Try “what fish are in Lake Michigan”, “what fish will be attracted to hot dogs”, or “best baits for smallmouth in summer on rock”.</small>
+    <small>Tip: Try “bass”, “I want to catch carp”, “what fish eat nightcrawlers”, or “what fish are in Lake Michigan”.</small>
   </main>
 
   <!-- Top Spots by State -->
@@ -115,9 +115,8 @@
   </div></dialog>
 
 <script>
-// ============ helpers ============
+// ===== helpers =====
 const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
 const chat = $('#chat');
 function addMsg(role, text){
   const row = document.createElement('div');
@@ -129,19 +128,19 @@ function addMsg(role, text){
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
-// Show JS errors in the chat (debug-friendly)
-window.addEventListener('error', e => { try{ addMsg('bot','⚠️ Script error: '+(e?.message||'unknown')); }catch(_){} });
+// show JS errors in the chat to help diagnose
+window.addEventListener('error', (e)=>{ try{ addMsg('bot','⚠️ Script error: '+(e?.message||'unknown')); }catch(_){} });
 
-// ============ data ============
+// ===== data =====
 function buildDB(){
   const species = {
-    "Largemouth Bass": { sci:"Micropterus salmoides", aliases:["largie","bucketmouth","lm bass","largemouth"], body:"moderate",
+    "Largemouth Bass": { sci:"Micropterus salmoides", aliases:["largie","bucketmouth","lm","largemouth","bass"], body:"moderate",
       diet:["minnows","sunfish","crayfish","frogs"],
       spawn:{tempF:[60,75], months:["Apr","May","Jun"]},
       lures:["Texas worm","spinnerbait","jig","squarebill","chatterbait","drop shot"],
       tactics:{spring:["lipless on flats","weightless stickbait near beds"], summer:["frogs on mats","Texas rigs"], fall:["spinnerbait in wind","swimbait on shad"], winter:["ned rig slow","blade bait 20–35 ft"]}
     },
-    "Smallmouth Bass": { sci:"Micropterus dolomieu", aliases:["smallie","bronzeback","sm bass","smallmouth"], body:"moderate",
+    "Smallmouth Bass": { sci:"Micropterus dolomieu", aliases:["smallie","bronzeback","sm","smallmouth","bass"], body:"moderate",
       diet:["crayfish","baitfish"], spawn:{tempF:[55,65], months:["May","Jun"]},
       lures:["tube","ned rig","jerkbait","swimbait","topwater walker","spinnerbait"],
       tactics:{spring:["tube on gravel flats","jerkbait 48–58°F"], summer:["topwater dawn","spinnerbait in wind"], fall:["blade/jerk on bait"], winter:["hair jig slow"]}
@@ -151,56 +150,16 @@ function buildDB(){
       lures:["jig+minnow","crawler harness","crankbait","jigging rap","spoons"],
       tactics:{spring:["jig+minnow seams","night stickbaits"], summer:["bottom-bouncer + spinner","troll cranks 1.5–2.5 mph"], fall:["jigging rap on breaks"], winter:["spoons/raps"]}
     },
-    "Northern Pike": { sci:"Esox lucius", aliases:["pike","gator"], body:"slender",
-      diet:["fish","frogs"], spawn:{tempF:[40,52], months:["Mar","Apr"]},
-      lures:["spoons","inline spinners","jerkbaits","swimbaits","spinnerbaits"],
-      tactics:{spring:["spoons/jerks in bays"], summer:["spinnerbaits over grass"], fall:["big glides/rubber"], winter:["tip-ups"]}
-    },
-    "Muskellunge": { sci:"Esox masquinongy", aliases:["musky","muskie"], body:"slender",
-      diet:["fish","suckers"], spawn:{tempF:[50,60], months:["Apr","May"]},
-      lures:["bucktails","jerkbaits","rubber","topwater"],
-      tactics:{spring:["bucktails/small cranks"], summer:["bucktails, topwater, big rubber"], fall:["giant rubber/jerks"], winter:["slow big rubber"]}
-    },
-    "Crappie": { sci:"Pomoxis spp.", body:"stocky", aliases:["specks","papermouth"], diet:["minnows","insects"],
-      spawn:{tempF:[58,68], months:["Apr","May"]},
-      lures:["minnows","small tubes","marabou jigs"],
-      tactics:{spring:["float+minnow"], summer:["shoot docks"], fall:["follow shad"], winter:["deep timber"]}
-    },
-    "Bluegill": { sci:"Lepomis macrochirus", body:"stocky", aliases:["gills","bream"], diet:["insects","larvae"],
-      spawn:{tempF:[67,80], months:["May","Jun","Jul"]},
-      lures:["worms","crickets","small jigs"],
-      tactics:{spring:["worms under bobber"], summer:["crickets by pads"], fall:["slow jigs"], winter:["ice micro jigs"]}
-    },
-    "Channel Catfish": { sci:"Ictalurus punctatus", body:"stocky", aliases:["channel cats","catfish"], diet:["cut bait","invertebrates"],
-      spawn:{tempF:[70,84], months:["Jun","Jul"]},
-      lures:["cut bait","stink bait","live bait"],
-      tactics:{spring:["fresh cut bait on seams"], summer:["night on flats"], fall:["drift cut bait"], winter:["deep holes"]}
-    },
-    "Flathead Catfish": { sci:"Pylodictis olivaris", body:"stocky", aliases:["flatheads","catfish"], diet:["live fish"],
-      spawn:{tempF:[66,75], months:["Jun","Jul"]},
-      lures:["live sunfish","live shad"],
-      tactics:{spring:["live bait near cover"], summer:["night big live baits"], fall:["slow drifts"], winter:["deep holes"]}
-    },
-    "Common Carp": { sci:"Cyprinus carpio", body:"stocky", aliases:["carp"], diet:["detritus","invertebrates","corn","boilies"],
-      spawn:{tempF:[60,72], months:["May","Jun"]},
-      lures:["corn","pack baits","boilies"],
-      tactics:{spring:["pack/method feeder"], summer:["float corn in margins"], fall:["boilies on routes"], winter:["small, slow"]}
-    },
-    "Rainbow Trout": { sci:"Oncorhynchus mykiss", body:"slender", aliases:["bows","rainbows"], diet:["insects","scuds","baitfish"],
-      spawn:{tempF:[42,52], months:["Mar","Apr"]},
-      lures:["nymphs","spoons","inline spinners","small cranks"],
-      tactics:{spring:["nymphs under indicator","small spoons"], summer:["dry flies evenings"], fall:["streamers"], winter:["midges"]}
-    },
-    "Brown Trout": { sci:"Salmo trutta", body:"slender", aliases:["browns"], diet:["insects","crustaceans","baitfish"],
-      spawn:{tempF:[44,52], months:["Oct","Nov"]},
-      lures:["streamers","spinners","small cranks"],
-      tactics:{spring:["nymphs/small cranks"], summer:["night streamers"], fall:["eggs+streamers"], winter:["tiny midges"]}
-    },
-    "Brook Trout": { sci:"Salvelinus fontinalis", body:"slender", aliases:["brookies"], diet:["insects","small minnows"],
-      spawn:{tempF:[40,50], months:["Oct","Nov"]},
-      lures:["small spinners","dry flies","tiny nymphs"],
-      tactics:{spring:["small spinners"], summer:["dry flies"], fall:["streamers"], winter:["tiny nymphs"]}
-    }
+    "Northern Pike": { sci:"Esox lucius", body:"slender", aliases:["pike","gator"], diet:["fish","frogs"], spawn:{tempF:[40,52], months:["Mar","Apr"]}, tactics:{spring:["spoons/jerks in bays"], summer:["spinnerbaits over grass"], fall:["big glides/rubber"], winter:["tip-ups"]} },
+    "Muskellunge": { sci:"Esox masquinongy", body:"slender", aliases:["musky","muskie"], diet:["fish","suckers"], spawn:{tempF:[50,60], months:["Apr","May"]}, tactics:{spring:["bucktails/small cranks"], summer:["bucktails, topwater, big rubber"], fall:["giant rubber/jerks"], winter:["slow big rubber"]} },
+    "Crappie": { sci:"Pomoxis spp.", body:"stocky", aliases:["specks","papermouth"], diet:["minnows","insects"], spawn:{tempF:[58,68], months:["Apr","May"]}, tactics:{spring:["float+minnow around cover"], summer:["shoot docks"], fall:["follow shad"], winter:["deep timber"]} },
+    "Bluegill": { sci:"Lepomis macrochirus", body:"stocky", aliases:["gills","bream"], diet:["insects","larvae"], spawn:{tempF:[67,80], months:["May","Jun","Jul"]}, tactics:{spring:["worms under bobber"], summer:["crickets by pads"], fall:["slow jigs"], winter:["ice micro jigs"]} },
+    "Channel Catfish": { sci:"Ictalurus punctatus", body:"stocky", aliases:["channel cats","catfish"], diet:["cut bait","invertebrates"], spawn:{tempF:[70,84], months:["Jun","Jul"]}, tactics:{spring:["fresh cut bait on seams"], summer:["night on flats"], fall:["drift cut bait"], winter:["deep holes"]} },
+    "Flathead Catfish": { sci:"Pylodictis olivaris", body:"stocky", aliases:["flatheads","catfish"], diet:["live fish"], spawn:{tempF:[66,75], months:["Jun","Jul"]}, tactics:{spring:["live bait near cover"], summer:["night big live baits"], fall:["slow drifts"], winter:["deep holes"]} },
+    "Common Carp": { sci:"Cyprinus carpio", body:"stocky", aliases:["carp"], diet:["detritus","invertebrates","corn","boilies"], spawn:{tempF:[60,72], months:["May","Jun"]}, tactics:{spring:["pack/method feeder"], summer:["float corn in margins"], fall:["boilies on routes"], winter:["small, slow"]} },
+    "Rainbow Trout": { sci:"Oncorhynchus mykiss", body:"slender", aliases:["bows","rainbows"], diet:["insects","scuds","baitfish"], spawn:{tempF:[42,52], months:["Mar","Apr"]}, tactics:{spring:["nymphs under indicator","small spoons"], summer:["dry flies evenings"], fall:["streamers"], winter:["midges"]} },
+    "Brown Trout": { sci:"Salmo trutta", body:"slender", aliases:["browns"], diet:["insects","crustaceans","baitfish"], spawn:{tempF:[44,52], months:["Oct","Nov"]}, tactics:{spring:["nymphs/small cranks"], summer:["night streamers"], fall:["eggs+streamers"], winter:["tiny midges"]} },
+    "Brook Trout": { sci:"Salvelinus fontinalis", body:"slender", aliases:["brookies"], diet:["insects","small minnows"], spawn:{tempF:[40,50], months:["Oct","Nov"]}, tactics:{spring:["small spinners"], summer:["dry flies"], fall:["streamers"], winter:["tiny nymphs"]} }
   };
 
   const knots = {
@@ -272,8 +231,6 @@ function buildDB(){
     cover:{ grass:"Swim jigs, chatterbaits, frogs.", wood:"Squarebills, jigs, Texas rigs.", rock:"Cranks, tubes, football jigs.", docks:"Skip plastics/jigs." }
   };
 
-  const temps = { largemouth:{spawn:[60,75]}, smallmouth:{spawn:[55,65]}, walleye:{spawn:[42,50]}, pike:{spawn:[40,52]}, crappie:{spawn:[58,68]}, bluegill:{spawn:[67,80]} };
-
   const records = [
     {species:"Largemouth Bass (All-Tackle)", note:"Often cited 22 lb 4 oz (1932) and 22 lb 5 oz tie (2009). Verify latest at IGFA."},
     {species:"Smallmouth Bass (All-Tackle)", note:"11 lb 15 oz (1955) — check IGFA."},
@@ -324,16 +281,18 @@ function buildDB(){
     {state:'Pennsylvania — PFBC', url:'https://www.pa.gov/agencies/fishandboat/faqs/fishing-licenses-%26-regulations-faqs.html'}
   ];
 
-  return {species, knots, facts, baitRoulette, conditions, temps, records, baitToSpecies, waterbodies, topSpots, regsDirectory};
+  return {species, knots, facts, baitRoulette, conditions, records, baitToSpecies, waterbodies, topSpots, regsDirectory};
 }
 const DB = buildDB();
 
-// Greeting
-addMsg('bot', "Hello, I’m Fishly‑AI — your AI fishing buddy. Ask me about species, baits, seasons, water temps, or anything freshwater. I’ll keep it friendly, helpful, and a little punny. 🎣");
+// greet
+addMsg('bot', "Hello, I’m Fishly-AI — your AI fishing buddy. Ask me about species, baits, seasons, water temps, or anything freshwater. I’ll keep it friendly, helpful, and a little punny. 🎣");
 
-// ============ tiny NLP helpers ============
+// ===== tiny NLP helpers =====
 function norm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim(); }
+function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
 
+// Generic buckets so “bass” works
 const GENERIC_TARGETS = {
   bass: ['Largemouth Bass','Smallmouth Bass'],
   catfish: ['Channel Catfish','Flathead Catfish'],
@@ -342,7 +301,7 @@ const GENERIC_TARGETS = {
   carp: ['Common Carp']
 };
 
-// ============ chat wiring ============
+// ===== chat wiring =====
 document.addEventListener('DOMContentLoaded', () => {
   const sendBtn = $('#send');
   const msgIn = $('#msg');
@@ -351,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const val = (msgIn && msgIn.value)||'';
       if(!val.trim()) return;
       addMsg('user', val);
-      try{ respond(val); }catch(err){ addMsg('bot','⚠️ Oops: '+err.message); }
+      try{ handleUserInput(val); }catch(err){ addMsg('bot','⚠️ Oops: '+err.message); }
       msgIn.value='';
     });
   }
@@ -362,10 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // buttons & dialogs
-  const dlgKnots = $('#dlgKnots'), dlgEstimator = $('#dlgEstimator'), dlgRecords = $('#dlgRecords'), dlgRegs = $('#dlgRegs'), dlgSpots = $('#dlgSpots');
+  const dlgKnots=$('#dlgKnots'), dlgEstimator=$('#dlgEstimator'), dlgRecords=$('#dlgRecords'), dlgRegs=$('#dlgRegs'), dlgSpots=$('#dlgSpots');
   const safeShow = dlg => { try{ if(dlg?.showModal) dlg.showModal(); else dlg?.setAttribute('open',''); }catch(e){ addMsg('bot','⚠️ Modal error: '+e.message); } };
 
-  const on = (sel, fn) => { const el=$(sel); if(el) el.addEventListener('click', fn); };
+  const on=(sel,fn)=>{ const el=$(sel); if(el) el.addEventListener('click', fn); };
   on('#btnKnots',     ()=>{ renderKnots();     safeShow(dlgKnots); });
   on('#btnFact',      ()=>{ addMsg('bot', "Here's a random fishing fact:"); addMsg('bot', rand(DB.facts)); });
   on('#btnRoulette',  ()=>{ const c=rand(DB.baitRoulette); addMsg('bot','🎲 Rolling the dice...'); addMsg('bot', `Roulette says: ${c.name} — ${c.tip}`); });
@@ -374,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
   on('#btnRegs',      ()=>{ renderRegs();      safeShow(dlgRegs); });
   on('#btnSpots',     ()=>{ renderSpots();     safeShow(dlgSpots); });
 
+  // proper close handlers (avoid undefined globals)
   on('#btnCloseKnots',     ()=> dlgKnots?.close());
   on('#btnCloseEstimator', ()=> dlgEstimator?.close());
   on('#btnCloseRecords',   ()=> dlgRecords?.close());
@@ -381,59 +341,51 @@ document.addEventListener('DOMContentLoaded', () => {
   on('#btnCloseSpots',     ()=> dlgSpots?.close());
 });
 
-// ============ router ============
-function respond(input){
+// ===== intent router =====
+function handleUserInput(input){
   const t = norm(input);
 
-  // 1) Species detection (names + aliases)
-  const speciesHit = findSpecies(t);
-  if(speciesHit){
-    addMsg('bot', speciesProfile(speciesHit));
-    return;
-  }
+  // 1) explicit species names/aliases
+  const sp = detectSpecies(t);
+  if(sp){ addMsg('bot', renderSpeciesProfile(sp)); return; }
 
-  // 2) Generic target terms (bass, carp, catfish, trout, panfish)
+  // 2) generic buckets (bass/carp/catfish/trout/panfish)
   const generic = Object.keys(GENERIC_TARGETS).find(k => t.includes(k));
   if(generic){
     const list = GENERIC_TARGETS[generic];
-    if(list.length === 1){
-      addMsg('bot', speciesProfile(list[0]));
-    }else{
-      const quick = list.map(n=>`• ${n}`).join('\n');
-      addMsg('bot', `${capitalize(generic)} can mean a few things:\n${quick}\n\nTell me which one, or here’s a quick starter: moving baits to find fish (spinnerbait/crank), then slow down with a jig or worm after a bite.`);
+    if(list.length===1){ addMsg('bot', renderSpeciesProfile(list[0])); }
+    else{
+      const choices = list.map(n=>'• '+n).join('\n');
+      addMsg('bot', `${capitalize(generic)} could be:\n${choices}\n\nTell me which one for specifics. Fast primer: cover water with a spinnerbait/crank to find fish, then slow down with a jig or worm after a bite.`);
     }
     return;
   }
 
-  // 3) “How to catch … / what lure for …”
+  // 3) how-to / what to use for {species}
   if(/(how\s+(to|do)\s+(i\s+)?catch|what\s+(should\s+i\s+)?(use|throw)|best\s+(lure|bait)\s+for)/.test(t)){
-    const maybe = findSpecies(t);
-    if(maybe){ addMsg('bot', speciesProfile(maybe)); return; }
+    const maybe = detectSpecies(t); if(maybe){ addMsg('bot', renderSpeciesProfile(maybe)); return; }
   }
 
-  // 4) Bait → which fish?
-  const baitAns = baitAttractsFromText(t);
-  if(baitAns){ addMsg('bot', baitAns); return; }
+  // 4) bait → which fish
+  const baitAns = handleBaitQuery(t); if(baitAns){ addMsg('bot', baitAns); return; }
 
-  // 5) Waterbody → what lives there?
-  const waterAns = waterbodyFromText(t);
-  if(waterAns){ addMsg('bot', waterAns); return; }
+  // 5) waterbody → what lives there
+  const waterAns = handleWaterbodyQuery(t); if(waterAns){ addMsg('bot', waterAns); return; }
 
-  // 6) General fishing guidance keywords → conditions advice
-  const cond = conditionAdvice(t);
-  if(cond){ addMsg('bot', cond); return; }
+  // 6) lightweight conditions coaching
+  const cond = conditionAdvice(t); if(cond){ addMsg('bot', cond); return; }
 
-  // 7) Tools hints
+  // 7) tool hints
   if(t.includes('knot')) { addMsg('bot',"Knots? Tap ‘Knot Tutor’ above for step-by-steps (Palomar, Uni, FG, Snell…)."); return; }
-  if(t.includes('record')) { addMsg('bot',"Tap ‘Records’ for quick all‑tackle notes; verify at IGFA for the latest."); return; }
+  if(t.includes('record')) { addMsg('bot',"Tap ‘Records’ for quick all-tackle notes; verify at IGFA for the latest."); return; }
   if(t.includes('regulation')||t.includes('legal')||t.includes('limit')) { addMsg('bot',"Tap ‘Regulations’ and pick your state — rules change by season/waterbody."); return; }
 
-  // 8) Fallback
+  // 8) fallback
   addMsg('bot', "Tell me the species or situation (season, water clarity, cover), and I’ll recommend baits, retrieves, and setups. Or tap a tool above.");
 }
 
-// ============ intent helpers ============
-function findSpecies(t){
+// ===== detectors & responders =====
+function detectSpecies(t){
   for(const [name, entry] of Object.entries(DB.species)){
     const terms = [name.toLowerCase(), ...(entry.aliases||[]).map(x=>x.toLowerCase())];
     if(terms.some(k => t.includes(k))) return name;
@@ -441,13 +393,13 @@ function findSpecies(t){
   return null;
 }
 
-function speciesProfile(name){
+function renderSpeciesProfile(name){
   const s = DB.species[name]; if(!s) return `I know ${name} in spirit, not in data yet.`;
   const lines = [];
   lines.push(`🎯 ${name} (${s.sci})`);
   if(s.spawn) lines.push(`Spawning ~${s.spawn.tempF[0]}–${s.spawn.tempF[1]}°F, months ${s.spawn.months.join(', ')}`);
   if(s.diet)  lines.push('Diet: '+s.diet.join(', '));
-  if(s.lures) lines.push('Go‑to baits: ' + s.lures.join(', '));
+  if(s.lures) lines.push('Go-to baits: ' + s.lures.join(', '));
   if(s.tactics){
     lines.push('\nStarter plan:');
     if(s.tactics.spring) lines.push('• Spring: ' + s.tactics.spring[0]);
@@ -459,21 +411,19 @@ function speciesProfile(name){
   return lines.join('\n');
 }
 
-function baitAttractsFromText(t){
-  // look for any known bait terms/aliases in the text
+function handleBaitQuery(t){
+  if(!/(what|which).*(fish).*?(attracted|bite|hit|eat|go for)|bait.*(work|good)/.test(t)) return null;
   for(const [bait, info] of Object.entries(DB.baitToSpecies)){
     const aliases = [bait, ...(info.aliases||[])].map(x=>x.toLowerCase());
-    if(aliases.some(a => t.includes(a))){
+    if(aliases.some(a=>t.includes(a))){
       const list = info.species.map(s=>`• ${s}`).join('\n');
-      return `Anglers often catch fish on ${bait} like:\n${list}\n\nWant details on one of these? Say the species name.`;
+      return `Anglers often catch fish on ${bait} like:\n${list}\n\nWant details on one of these? Type the species name and I’ll break down tactics, temps, and tackle.`;
     }
   }
-  // If user asked the intent but no bait matched, bail out:
-  if(/what.*fish.*(attracted|bite|hit|eat|go for)/.test(t)){ return "Name a bait (e.g., nightcrawler, corn, spinnerbait) and I’ll list species that hit it."; }
   return null;
 }
 
-function waterbodyFromText(t){
+function handleWaterbodyQuery(t){
   if(!/(what).*(fish).*(in|at)|what.*(catch).*if.*(fish)/.test(t)) return null;
   for(const [wb, info] of Object.entries(DB.waterbodies)){
     if(t.includes(wb.toLowerCase())){
@@ -493,17 +443,14 @@ function conditionAdvice(t){
   const clarity = (t.match(/\b(clear|stained|dirty|muddy)\b/)||[])[1];
   const cover   = (t.match(/\b(grass|weeds|vegetation|wood|laydown|timber|rock|riprap|docks|lily|pads)\b/)||[])[1];
   const chunks=[];
-  if(season){
-    const key = season==='autumn'?'fall':season;
-    chunks.push('Season → ' + DB.conditions.season[key]);
-  }
-  if(clarity) chunks.push('Water → ' + DB.conditions.clarity[clarity]);
-  if(cover)   chunks.push('Cover → ' + DB.conditions.cover[cover]);
+  if(season){ const key = season==='autumn'?'fall':season; chunks.push('Season → ' + (DB.conditions.season[key]||'')); }
+  if(clarity) chunks.push('Water → ' + (DB.conditions.clarity[clarity]||''));
+  if(cover)   chunks.push('Cover → ' + (DB.conditions.cover[cover]||'')); 
   if(!chunks.length) return null;
   return chunks.join('\n') + '\n\nBonus: Tap 🎲 Bait Roulette for inspiration.';
 }
 
-// ============ UI features ============
+// ===== buttons/features =====
 function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
 function renderKnots(){
@@ -511,12 +458,8 @@ function renderKnots(){
   for(const [name,k] of Object.entries(DB.knots)){
     const det=document.createElement('details'); det.className='card';
     const sum=document.createElement('summary'); sum.textContent=name; det.appendChild(sum);
-    const ol=document.createElement('ol');
-    k.steps.forEach(s=>{ const li=document.createElement('li'); li.textContent=s; ol.appendChild(li); });
-    det.appendChild(ol);
-    const tips=document.createElement('div'); tips.className='card'; tips.style.background='#fff';
-    tips.innerHTML=`<small>Strength: <strong>${k.strength}</strong>. ${k.notes}</small>`;
-    det.appendChild(tips);
+    const ol=document.createElement('ol'); k.steps.forEach(s=>{ const li=document.createElement('li'); li.textContent=s; ol.appendChild(li); }); det.appendChild(ol);
+    const tips=document.createElement('div'); tips.className='card'; tips.style.background='#fff'; tips.innerHTML=`<small>Strength: <strong>${k.strength}</strong>. ${k.notes}</small>`; det.appendChild(tips);
     grid.appendChild(det);
   }
 }
@@ -537,7 +480,9 @@ function renderEstimator(){
 
 function renderRecords(){
   const box = document.getElementById('recordsList'); if(!box) return;
-  box.innerHTML = DB.records.map(r=>`<div class="card"><strong>${r.species}</strong><div>${r.note}</div></div>`).join('');
+  box.innerHTML = [
+    ...DB.records.map(r=>`<div class="card"><strong>${r.species}</strong><div>${r.note}</div></div>`)
+  ].join('');
 }
 
 function renderRegs(){
@@ -564,8 +509,6 @@ function renderSpots(){
   };
   if(q) q.oninput = draw; draw();
 }
-
-function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
 </script>
 </body>
 </html>
