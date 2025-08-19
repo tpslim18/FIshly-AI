@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fishly‑AI — Your Freshwater Fishing Buddy</title>
+<title>Fishly-AI — Your Freshwater Fishing Buddy</title>
 <style>
   :root{
     --bg:#f6f7fb;--card:#ffffff;--ink:#0f172a;--muted:#6b7280;--sky:#0ea5e9;--border:#e5e7eb;
@@ -53,7 +53,7 @@
 <body>
   <header>
     <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <h1>🐟 Fishly‑AI</h1>
+      <h1>🐟 Fishly-AI</h1>
       <div class="chips">
         <button class="btn" id="btnKnots">Knot Tutor</button>
         <button class="btn" id="btnFact">Random Fact</button>
@@ -61,6 +61,7 @@
         <button class="btn" id="btnEstimator">Weight Estimator</button>
         <button class="btn" id="btnRecords">Records</button>
         <button class="btn" id="btnRegs">Regulations</button>
+        <button class="btn" id="btnSpots">Top Spots by State</button>
       </div>
     </div>
   </header>
@@ -75,6 +76,17 @@
     </div>
     <p class="mute" style="margin:.75rem 6px 0">Tip: say “largemouth spring in muddy water around wood” or “best knot for braid to leader”.</p>
   </main>
+
+  <!-- Top Spots by State -->
+  <dialog id="dlgSpots"><div class="modal">
+    <header class="wrap" style="padding:10px 6px"><h2>Top Freshwater Spots by State</h2><small>Browse popular lakes/rivers. Always check seasonal patterns, access, and current regulations before you go.</small></header>
+    <div class="wrap search" style="padding:0 6px 8px"><input id="spotSearch" placeholder="Type a state name (e.g., Michigan)"/></div>
+    <div class="wrap">
+      <div class="grid cols-3" id="spotGrid"></div>
+      <div class="card" style="margin-top:10px"><strong>Tip:</strong> Tap a spot for a quick note; use my chat to ask what to throw there by season and water clarity.</div>
+    </div>
+    <div class="wrap" style="padding:12px 6px;text-align:right"><button class="btn" onclick="dlgSpots.close()">Close</button></div>
+  </div></dialog>
 
   <!-- Knot Tutor -->
   <dialog id="dlgKnots"><div class="modal">
@@ -147,6 +159,7 @@ const dlgKnots = $('#dlgKnots');
 const dlgEstimator = $('#dlgEstimator');
 const dlgRecords = $('#dlgRecords');
 const dlgRegs = $('#dlgRegs');
+const dlgSpots = $('#dlgSpots');
 const rand = (arr)=>arr[Math.floor(Math.random()*arr.length)];
 
 function addMsg(role, text){
@@ -165,7 +178,7 @@ function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 const DB = buildDB();
 
 // Seed greeting
-addMsg('bot', "Hello, I’m Fishly‑AI — your AI fishing buddy. Ask me about species, baits, seasons, water temps, or anything freshwater. I’ll keep it friendly, helpful, and a little punny. 🎣");
+addMsg('bot', "Hello, I’m Fishly-AI — your AI fishing buddy. Ask me about species, baits, seasons, water temps, or anything freshwater. I’ll keep it friendly, helpful, and a little punny. 🎣");
 
 // ===== Chat routing =====
 btnSend.addEventListener('click', ()=> send());
@@ -179,15 +192,19 @@ function send(){
 }
 
 function craftReply(t){
-  // off-topic steer
+  // New: bait → species and waterbody lookups
+  const baitAns = handleBaitQuery(t);
+  if (baitAns) return baitAns;
+  const wbAns = handleWaterbodyQuery(t);
+  if (wbAns) return wbAns;
+
+  // Previous intents
   const fishingKeys = ['fish','fishing','bass','trout','walleye','musk','pike','catfish','bluegill','crappie','lure','bait','rod','reel','line','knot','lake','river','spawn','water temp'];
 
-  // knots quick nudge
   if(t.includes('knot')){
-    return "Knots? Nice! Tap ‘Knot Tutor’ above for step‑by‑steps (Palomar, Uni, Improved Clinch, FG, Snell, and more).";
+    return "Knots? Nice! Tap ‘Knot Tutor’ above for step-by-steps (Palomar, Uni, Improved Clinch, FG, Snell, and more).";
   }
 
-  // species profile
   const sp = detectSpecies(t);
   if(sp){ return renderSpeciesProfile(sp); }
 
@@ -233,7 +250,7 @@ function renderSpeciesProfile(name){
       if(s.tactics[season]?.length){ lines.push(`• ${capitalize(season)}: ${s.tactics[season].join('; ')}`); }
     }
   }
-  if(s.lures?.length) lines.push('\nGo‑to lures: '+s.lures.join(', '));
+  if(s.lures?.length) lines.push('\nGo-to lures: '+s.lures.join(', '));
   if(s.tackle){ const t=s.tackle; lines.push(`\nTackle: rod ${t.rod}; reel ${t.reel}; line ${t.line}. Notes: ${t.notes}`);}
   return lines.join('\n');
 }
@@ -246,26 +263,70 @@ function suggestLures(t){
   if(season) picks.push(`Season: ${capitalize(season)} → ${DB.conditions.season[season]}`);
   if(clarity) picks.push(`Water: ${clarity} → ${DB.conditions.clarity[clarity]}`);
   if(cover) picks.push(`Cover: ${cover} → ${DB.conditions.cover[cover]}`);
-  const base = picks.length? picks.join('\n') : 'Give me season, clarity, and cover to dial it in. Starters: a moving bait to find \u2019em, then slow down with a jig or worm after a bite.';
+  const base = picks.length? picks.join('\n') : 'Give me season, clarity, and cover to dial it in. Starters: a moving bait to find ’em, then slow down with a jig or worm after a bite.';
   return base+"\n\nBonus: Tap 🎲 Bait Roulette above and dare the fishing gods to choose your next lure.";
 }
 
 function waterTempTalk(t){
   const hits = Object.entries(DB.temps).filter(([k])=>t.includes(k));
   if(hits.length===0){
-    return 'General rule: cold = slow finesse; warming = reaction baits; stable summer = topwaters early/late + deeper mid‑day; fall = chase baitfish; winter = go tiny and slow. Ask me about a species for exact temps.';
+    return 'General rule: cold = slow finesse; warming = reaction baits; stable summer = topwaters early/late + deeper mid-day; fall = chase baitfish; winter = go tiny and slow. Ask me about a species for exact temps.';
   }
   const lines = hits.map(([k,v])=>`• ${capitalize(k)}: spawn ~${v.spawn[0]}–${v.spawn[1]}°F; prime feed ~${v.feed[0]}–${v.feed[1]}°F`);
   return 'Water temp cheat sheet:\n'+lines.join('\n');
 }
 
+// NEW: If user asks what fish are attracted to a bait
+function handleBaitQuery(t){
+  if(!/(what|which).*(fish).*?(attracted|bite|hit|eat|go for)|bait.*(work|good)/.test(t)){
+    return null;
+  }
+  let hit = null;
+  for(const [bait, info] of Object.entries(DB.baitToSpecies)){
+    const aliases = [bait, ...(info.aliases||[])].map(x=>x.toLowerCase());
+    if(aliases.some(a=>t.includes(a))){ hit = {bait, info}; break; }
+  }
+  if(!hit) return null;
+  const list = hit.info.species.map(s=>`• ${s}`).join('\n');
+  return `Anglers often catch fish on ${hit.bait} like:\n${list}\n\nWant details on one of these? Type the species name and I\\'ll break down tactics, temps, and tackle.`;
+}
+
+// NEW: If user asks what fish are in a given lake/river/pond
+function handleWaterbodyQuery(t){
+  if(!/(what).*(fish).*(in|at)|what.*(catch).*if.*(fish)/.test(t)) return null;
+  // try direct waterbody match
+  for(const [wb, info] of Object.entries(DB.waterbodies)){
+    const names = [wb, ...(info.aliases||[])].map(x=>x.toLowerCase());
+    if(names.some(n=>t.includes(n))){
+      const species = info.species.join(', ');
+      const note = info.note? `\nNote: ${info.note}`:'';
+      return `Typical species for ${wb}: ${species}.${note} \n(These are common reports; always verify local surveys and regs.)`;
+    }
+  }
+  // generic type fallback
+  if(t.includes('river')){
+    const g = DB.waterbodies['Generic River'];
+    return `Common river species: ${g.species.join(', ')}. ${g.note || ''}`;
+  }
+  if(t.includes('pond')){
+    const g = DB.waterbodies['Generic Pond'];
+    return `Common pond species: ${g.species.join(', ')}. ${g.note || ''}`;
+  }
+  if(t.includes('lake')){
+    const g = DB.waterbodies['Generic Lake'];
+    return `Common lake species: ${g.species.join(', ')}. ${g.note || ''}`;
+  }
+  return null;
+}
+
 // ===== Buttons =====
 $('#btnKnots').addEventListener('click', ()=>{ renderKnots(); dlgKnots.showModal(); });
-$('#btnFact').addEventListener('click', ()=>{ addMsg('bot','Here\'s a random fishing fact:'); addMsg('bot', rand(DB.facts)); });
+$('#btnFact').addEventListener('click', ()=>{ addMsg('bot','Here\\'s a random fishing fact:'); addMsg('bot', rand(DB.facts)); });
 $('#btnRoulette').addEventListener('click', ()=>{ const c=rand(DB.baitRoulette); addMsg('bot','🎲 Rolling the dice...'); addMsg('bot', `Roulette says: ${c.name} — ${c.tip}`); });
 $('#btnEstimator').addEventListener('click', ()=>{ renderEstimator(); dlgEstimator.showModal(); });
 $('#btnRecords').addEventListener('click', ()=>{ renderRecords(); dlgRecords.showModal(); });
 $('#btnRegs').addEventListener('click', ()=>{ renderRegs(); dlgRegs.showModal(); });
+$('#btnSpots').addEventListener('click', ()=>{ renderSpots(); dlgSpots.showModal(); });
 
 function renderKnots(){
   const grid = $('#knotGrid'); grid.innerHTML='';
@@ -310,6 +371,19 @@ function renderRegs(){
   q.oninput = draw; draw();
 }
 
+function renderSpots(){
+  const grid = $('#spotGrid'); const q = $('#spotSearch');
+  const draw = ()=>{
+    const needle = (q.value||'').toLowerCase();
+    const states = Object.keys(DB.topSpots).filter(st=>!needle || st.toLowerCase().includes(needle));
+    grid.innerHTML = states.map(st=>{
+      const items = DB.topSpots[st].map(s=>`<li><strong>${s.name}</strong><br><small>${s.note}</small></li>`).join('');
+      return `<div class="card"><div style="font-weight:600">${st}</div><ul style="margin:6px 0 0 16px">${items}</ul></div>`;
+    }).join('');
+  };
+  q.oninput = draw; draw();
+}
+
 // ===== DB builder =====
 function buildDB(){
   const species = {
@@ -322,9 +396,9 @@ function buildDB(){
       traits:["dark horizontal stripe","separated dorsal notch","jaw past eye"],
       tactics:{
         spring:["lipless or squarebill on flats","weightless stickbait near beds (give space)","finesse jig in wood"],
-        summer:["frogs over mats","Texas‑rig on edges","topwater dawn/dusk; deep crank mid‑day"],
+        summer:["frogs over mats","Texas-rig on edges","topwater dawn/dusk; deep crank mid-day"],
         fall:["spinnerbait on windy banks","chasing shad schools with swimbaits"],
-        winter:["ned rig ultra‑slow","blade bait 20–35 ft","jigging spoons"]
+        winter:["ned rig ultra-slow","blade bait 20–35 ft","jigging spoons"]
       },
       lures:["Texas worm","spinnerbait","jig","squarebill","chatterbait","drop shot"],
       tackle:{rod:"M–MH fast 6'9\"–7'3\"", reel:"baitcaster 7:1 or spinning 2500+", line:"12–17 lb fluoro/mono; 30–50 lb braid for frogs", notes:"Upsize in heavy cover; downsize in clear water."},
@@ -334,7 +408,7 @@ function buildDB(){
       sci:"Micropterus dolomieu", family:"Centrarchidae", aliases:["brownie","bronzeback","smallie"],
       regions:["Great Lakes","Upper/Mid Mississippi","Appalachians","stocked elsewhere"], habitats:["rocky lakes","clear rivers","shoals","points","current seams"],
       size:{typ_len_in:[10,17], max_len_in:27, typ_wt_lb:[1,4], max_wt_lb:8}, diet:["crayfish","smelt/alewife/shad","insects","gobies"],
-      spawn:{tempF:[55,65], months:["May","Jun"], notes:"Males build/guard nests on gravel/sand; sight‑fishing common in clear water."},
+      spawn:{tempF:[55,65], months:["May","Jun"], notes:"Males build/guard nests on gravel/sand; sight-fishing common in clear water."},
       traits:["bronze bars","red/brown eyes","jaw ends before eye"],
       tactics:{
         spring:["tube or ned on gravel flats","swimbait on points","jerkbait 48–58°F"],
@@ -347,34 +421,34 @@ function buildDB(){
       body:"moderate"
     },
     "Walleye": {
-      sci:"Sander vitreus", family:"Percidae", aliases:["marble‑eye"],
-      regions:["Upper Midwest/Great Lakes","Canada","stocked reservoirs"], habitats:["lakes","rivers","drop‑offs","points","weedlines","current"],
+      sci:"Sander vitreus", family:"Percidae", aliases:["marble-eye"],
+      regions:["Upper Midwest/Great Lakes","Canada","stocked reservoirs"], habitats:["lakes","rivers","drop-offs","points","weedlines","current"],
       size:{typ_len_in:[15,24], max_len_in:36, typ_wt_lb:[2,6], max_wt_lb:20}, diet:["perch","shiners","smelt","mayflies"],
       spawn:{tempF:[42,50], months:["Mar","Apr"], notes:"Run upstream or rocky shorelines at night; broadcast spawners."},
-      traits:["big reflective eyes","toothy","low‑light feeders"],
-      tactics:{spring:["jig + minnow on seams","stickbaits at night riprap"], summer:["bottom‑bouncers + spinner rigs","troll crankbaits 1.5–2.5 mph"], fall:["blade baits & jigging raps on breaks"], winter:["ice spoons + set‑lines"]},
+      traits:["big reflective eyes","toothy","low-light feeders"],
+      tactics:{spring:["jig + minnow on seams","stickbaits at night riprap"], summer:["bottom-bouncers + spinner rigs","troll crankbaits 1.5–2.5 mph"], fall:["blade baits & jigging raps on breaks"], winter:["ice spoons + set-lines"]},
       lures:["jig+minnow","crawler harness","crankbait","jigging rap","spoons"],
-      tackle:{rod:"ML fast 6'6\"–7'", reel:"spinning 2000–2500", line:"6–10 lb braid + fluoro leader", notes:"Night or wind‑chop boosts bites."},
+      tackle:{rod:"ML fast 6'6\"–7'", reel:"spinning 2000–2500", line:"6–10 lb braid + fluoro leader", notes:"Night or wind-chop boosts bites."},
       body:"slender"
     },
     "Northern Pike": {
       sci:"Esox lucius", family:"Esocidae", aliases:["gator","slimer"], regions:["Canada","Upper Midwest","Northeast","Eurasia"],
       habitats:["weeds","marsh bays","drop edges","river backwaters"], size:{typ_len_in:[20,34], max_len_in:50, typ_wt_lb:[3,12], max_wt_lb:40},
       diet:["fish","frogs"], spawn:{tempF:[40,52], months:["Mar","Apr"], notes:"Very early, in flooded vegetation; no parental care."}, traits:["long torpedo","duckbill jaws","many teeth"],
-      tactics:{spring:["spoons & jerkbaits in warming bays"], summer:["spinnerbaits over grass","swimbaits along edges"], fall:["big glide baits","live suckers where legal"], winter:["tip‑ups with large minnows"]},
+      tactics:{spring:["spoons & jerkbaits in warming bays"], summer:["spinnerbaits over grass","swimbaits along edges"], fall:["big glide baits","live suckers where legal"], winter:["tip-ups with large minnows"]},
       lures:["spoons","inline spinners","jerkbaits","swimbaits","spinnerbaits"], tackle:{rod:"MH–H 7'6\"", reel:"300 size baitcaster", line:"50–80 lb braid + wire/80 lb fluoro leader", notes:"Use bite leader!"}, body:"slender"
     },
     "Muskellunge": {
       sci:"Esox masquinongy", family:"Esocidae", aliases:["muskie","ski"], regions:["Great Lakes","Upper Midwest","St. Lawrence"],
       habitats:["weed/rock edges","points","cabbage beds","river cuts"], size:{typ_len_in:[30,45], max_len_in:60, typ_wt_lb:[10,30], max_wt_lb:67},
-      diet:["fish","suckers","pike","perch"], spawn:{tempF:[50,60], months:["Apr","May"], notes:"Broadcast spawners over weeds; low nursery success in some lakes."}, traits:["apex predator","follow/figure‑8"] ,
+      diet:["fish","suckers","pike","perch"], spawn:{tempF:[50,60], months:["Apr","May"], notes:"Broadcast spawners over weeds; low nursery success in some lakes."}, traits:["apex predator","follow/figure-8"] ,
       tactics:{spring:["bucktails & small cranks"], summer:["bucktails, topwater, big rubber"], fall:["giant rubber & jerkbaits; live suckers where legal"], winter:["slow big rubber on breaks"]},
-      lures:["double‑8 bucktail","glide bait","bulldawg","topwater"], tackle:{rod:"XH 8'6\"–9'", reel:"high‑torque", line:"80–100 lb braid + 130 lb fluoro/wire", notes:"Practice figure‑8s and safe release."}, body:"slender"
+      lures:["double-8 bucktail","glide bait","bulldawg","topwater"], tackle:{rod:"XH 8'6\"–9'", reel:"high-torque", line:"80–100 lb braid + 130 lb fluoro/wire", notes:"Practice figure-8s and safe release."}, body:"slender"
     },
     "Crappie": {
       sci:"Pomoxis spp.", family:"Centrarchidae", aliases:["specks","papermouth"], regions:["USA/Canada"],
       habitats:["brush","docks","standing timber"], size:{typ_len_in:[8,12], max_len_in:19, typ_wt_lb:[0.5,2], max_wt_lb:5}, diet:["minnows","small shad","insects"],
-      spawn:{tempF:[58,68], months:["Apr","May"], notes:"Males fan nests in shallow cover."}, traits:["paper‑thin mouth"],
+      spawn:{tempF:[58,68], months:["Apr","May"], notes:"Males fan nests in shallow cover."}, traits:["paper-thin mouth"],
       tactics:{spring:["float + minnow around cover"], summer:["shoot docks","vertical jig brush"], fall:["follow shad to creeks"], winter:["tightline deep timber"]},
       lures:["hair jigs","tubes","small swimbaits","live minnows"], tackle:{rod:"UL–L 6'–8'", reel:"1000 size spinning", line:"2–6 lb mono/fluoro", notes:"Gentle hooksets to avoid tears."}, body:"stocky"
     },
@@ -382,7 +456,7 @@ function buildDB(){
       sci:"Lepomis macrochirus", family:"Centrarchidae", aliases:["gill","bream"], regions:["USA/Canada"],
       habitats:["weeds","pads","docks","shallow flats"], size:{typ_len_in:[6,10], max_len_in:16, typ_wt_lb:[0.3,1], max_wt_lb:3}, diet:["insects","larvae","small minnows"],
       spawn:{tempF:[67,80], months:["May","Jun","Jul"], notes:"Colony beds on sand/gravel; may spawn multiple times in warm months."}, traits:["panfish, great for kids"],
-      tactics:{spring:["worms under bobber","tiny jigs"], summer:["crickets by pads","micro‑cranks"], fall:["slow jigs on edges"], winter:["ice tear‑drops + waxies"]},
+      tactics:{spring:["worms under bobber","tiny jigs"], summer:["crickets by pads","micro-cranks"], fall:["slow jigs on edges"], winter:["ice tear-drops + waxies"]},
       lures:["worms","waxworms","micro jigs"], tackle:{rod:"UL 5'–6'6\"", reel:"500–1000 spinning", line:"2–4 lb mono", notes:"Keep it simple and fun!"}, body:"stocky"
     },
     "Channel Catfish": {
@@ -409,20 +483,20 @@ function buildDB(){
       habitats:["riffles","pools","inlets/outlets"], size:{typ_len_in:[10,20], max_len_in:45, typ_wt_lb:[1,6], max_wt_lb:40}, diet:["insects","scuds","baitfish"],
       spawn:{tempF:[42,52], months:["Mar","Apr"], notes:"Redds in gravel; fall for some strains."}, traits:["clear, oxygenated water"],
       tactics:{spring:["nymphs under indicator","small spoons"], summer:["dry flies evenings","spinners"], fall:["streamers as baitfish move"], winter:["midges + small nymphs"]},
-      lures:["spinners","small spoons","flies"], tackle:{rod:"L–ML spinning/5‑wt fly", reel:"1000–2000 or trout fly", line:"4–8 lb mono/fluoro; 5X–6X tippet", notes:"Handle gently, keep them wet."}, body:"slender"
+      lures:["spinners","small spoons","flies"], tackle:{rod:"L–ML spinning/5-wt fly", reel:"1000–2000 or trout fly", line:"4–8 lb mono/fluoro; 5X–6X tippet", notes:"Handle gently, keep them wet."}, body:"slender"
     },
     "Brown Trout": {
-      sci:"Salmo trutta", family:"Salmonidae", aliases:["brownie"], regions:["cold streams/lakes","stocked widely"], habitats:["undercut banks","riffle‑pool sequences"],
-      size:{typ_len_in:[12,22], max_len_in:44, typ_wt_lb:[1,8], max_wt_lb:40}, diet:["insects","crustaceans","baitfish"], spawn:{tempF:[44,52], months:["Oct","Nov"], notes:"Fall spawner; digs redds in gravel."}, traits:["low‑light ambusher"],
+      sci:"Salmo trutta", family:"Salmonidae", aliases:["brownie"], regions:["cold streams/lakes","stocked widely"], habitats:["undercut banks","riffle-pool sequences"],
+      size:{typ_len_in:[12,22], max_len_in:44, typ_wt_lb:[1,8], max_wt_lb:40}, diet:["insects","crustaceans","baitfish"], spawn:{tempF:[44,52], months:["Oct","Nov"], notes:"Fall spawner; digs redds in gravel."}, traits:["low-light ambusher"],
       tactics:{spring:["nymphs & small cranks"], summer:["night streamers for bigs"], fall:["egg patterns & streamers"], winter:["tiny midges slow"]},
       lures:["spinners","minnow plugs","streamers"], tackle:{rod:"L–ML or 4–6 wt fly", reel:"1000–2500 or trout fly", line:"4–8 lb mono/fluoro; 4X–6X tippet", notes:"Stealthy approaches in clear water."}, body:"slender"
     },
     "Brook Trout": {
       sci:"Salvelinus fontinalis", family:"Salmonidae", aliases:["brookie","speck"], regions:["Appalachians","Northeast","Upper Midwest","Canada"],
       habitats:["cold headwaters","spring creeks"], size:{typ_len_in:[6,12], max_len_in:26, typ_wt_lb:[0.3,2.5], max_wt_lb:14}, diet:["insects","small minnows"],
-      spawn:{tempF:[40,50], months:["Oct","Nov"], notes:"Fall spawner in spring‑fed gravel."}, traits:["native char"],
-      tactics:{spring:["small spinners","dry flies"], summer:["brookie dries mid‑day in shade"], fall:["streamers (pre‑spawn)"], winter:["tiny nymphs slow"]},
-      lures:["spinners","micro plugs","flies"], tackle:{rod:"UL / 3‑4 wt fly", reel:"500–1000", line:"2–4 lb mono; 5X–6X tippet", notes:"Barbless hooks help safe release."}, body:"slender"
+      spawn:{tempF:[40,50], months:["Oct","Nov"], notes:"Fall spawner in spring-fed gravel."}, traits:["native char"],
+      tactics:{spring:["small spinners","dry flies"], summer:["brookie dries mid-day in shade"], fall:["streamers (pre-spawn)"], winter:["tiny nymphs slow"]},
+      lures:["spinners","micro plugs","flies"], tackle:{rod:"UL / 3-4 wt fly", reel:"500–1000", line:"2–4 lb mono; 5X–6X tippet", notes:"Barbless hooks help safe release."}, body:"slender"
     }
   };
 
@@ -443,16 +517,16 @@ function buildDB(){
       "Form a loop with tag and wrap 5–7 turns around both lines through the loop.",
       "Lubricate and pull tag to snug the wraps; slide down to the eye."
     ]},
-    "Double Uni (line‑to‑line)": { strength:"High", notes:"Great for braid‑to‑leader.", steps:[
+    "Double Uni (line-to-line)": { strength:"High", notes:"Great for braid-to-leader.", steps:[
       "Overlap line ends 8–10 inches.",
       "With line A, tie a Uni with 5–7 wraps around both lines; snug.",
       "Repeat with line B (mirror image).",
       "Pull standing lines to slide both knots together; trim tags."
     ]},
     "FG Knot (braid to leader)": { strength:"Very High", notes:"Slim profile; practice helps.", steps:[
-      "Lay leader taut. Wrap braid over leader alternating half‑hitches 16–22 times (braid bites leader).",
+      "Lay leader taut. Wrap braid over leader alternating half-hitches 16–22 times (braid bites leader).",
       "Set the wraps by pulling firmly on braid and leader.",
-      "Finish with 3–4 alternating half‑hitches on the braid and a 2–3 turn Rizzuto finish.",
+      "Finish with 3–4 alternating half-hitches on the braid and a 2–3 turn Rizzuto finish.",
       "Trim leader tag close."
     ]},
     "Snell Knot": { strength:"High", notes:"Great for flipping hooks; straight pull.", steps:[
@@ -466,12 +540,12 @@ function buildDB(){
       "Wrap tag 3–5 times around standing line and return tag through the loop.",
       "Lubricate and cinch to form a small loop ahead of the lure."
     ]},
-    "Surgeon’s Knot (line‑to‑line)": { strength:"Med", notes:"Fast, good for leaders.", steps:[
+    "Surgeon’s Knot (line-to-line)": { strength:"Med", notes:"Fast, good for leaders.", steps:[
       "Overlap lines 8 inches and tie an overhand knot in both lines together.",
       "Pass both tag ends through the loop again (double surgeon).",
       "Lubricate and cinch; trim tags."
     ]},
-    "Blood Knot (line‑to‑line)": { strength:"Med‑High", notes:"Great for mono‑to‑mono.", steps:[
+    "Blood Knot (line-to-line)": { strength:"Med-High", notes:"Great for mono-to-mono.", steps:[
       "Overlap ends.",
       "Wrap line A 5–7 times and feed tag back through the center.",
       "Wrap line B 5–7 times the other way and feed tag back through the center opposite.",
@@ -485,17 +559,17 @@ function buildDB(){
     "Bluegill often spawn in colonies; look for multiple craters on sand or gravel flats in late spring.",
     "Bass don’t have eyelids — low light and wind chop often improve their feeding confidence.",
     "Walleye frequently run upstream at night to broadcast eggs over rock in early spring (low 40s °F).",
-    "Pike and muskie are among the earliest spawners, often in flooded vegetation just after ice‑out.",
+    "Pike and muskie are among the earliest spawners, often in flooded vegetation just after ice-out.",
     "The Palomar knot remains a favorite for braid because it maintains high breaking strength."
   ];
 
   const baitRoulette = [
-    {name:"Weightless Stickbait", tip:"Skip it under docks; let it fall on slack, then twitch‑pause."},
-    {name:"Spinnerbait", tip:"Slow‑roll in stained, windy water along grass or wood."},
+    {name:"Weightless Stickbait", tip:"Skip it under docks; let it fall on slack, then twitch-pause."},
+    {name:"Spinnerbait", tip:"Slow-roll in stained, windy water along grass or wood."},
     {name:"Squarebill Crankbait", tip:"Bang it off cover in 2–6 ft; deflections trigger bites."},
-    {name:"Jig + Craw", tip:"Pitch to shade lines and laydowns; hop‑pause."},
+    {name:"Jig + Craw", tip:"Pitch to shade lines and laydowns; hop-pause."},
     {name:"Chatterbait/Bladed Jig", tip:"Swim along grass edges; trailer = paddle tail."},
-    {name:"Frog (Hollow‑Body)", tip:"Walk it over mats at dawn/dusk; wait a beat before the hookset."},
+    {name:"Frog (Hollow-Body)", tip:"Walk it over mats at dawn/dusk; wait a beat before the hookset."},
     {name:"Ned Rig", tip:"Drag and deadstick in cold water; subtle moves."},
     {name:"Swimbait (3–4\")", tip:"Slow roll around bait schools and points."},
     {name:"Drop Shot", tip:"Hold just off bottom; shake slack, not the weight."},
@@ -505,7 +579,7 @@ function buildDB(){
   const conditions = {
     season:{
       spring:"Shallow warming flats; reaction baits on wind, finesse near beds.",
-      summer:"Early/late topwater; mid‑day go deeper or shade. Grass edges shine.",
+      summer:"Early/late topwater; mid-day go deeper or shade. Grass edges shine.",
       fall:"Follow bait into creeks; chase with cranks/jerks/spinners.",
       winter:"Downsize and slow: ned, hair jigs, blade baits in 20–40 ft."
     },
@@ -524,7 +598,7 @@ function buildDB(){
       timber:"Vertical presentations, weedless rigs, careful boat control.",
       rock:"Cranks, tubes, football jigs; bottom contact.",
       riprap:"Medium cranks, spinnerbaits in wind, jerkbaits cooler temps.",
-      docks:"Skipping plastics/jigs; shade lines mid‑day.",
+      docks:"Skipping plastics/jigs; shade lines mid-day.",
       lily:"Frogs and toads; work holes and edges."
     }
   };
@@ -536,11 +610,94 @@ function buildDB(){
   };
 
   const records = [
-    {species:"Largemouth Bass (All‑Tackle)", note:"Widely cited at 22 lb 4 oz (George Perry, 1932; IGFA tie with Manabu Kurita, 2009). Verify latest at IGFA."},
-    {species:"Smallmouth Bass (All‑Tackle)", note:"11 lb 15 oz (Dale Hollow Lake, 1955) — check IGFA for details."},
-    {species:"Walleye (All‑Tackle)", note:"25 lb (Old Hickory Lake, 1960) — verify at IGFA."},
-    {species:"Muskellunge (All‑Tackle)", note:"67 lb 8 oz (Wisconsin, 1949) — verify at IGFA."}
+    {species:"Largemouth Bass (All-Tackle)", note:"Widely cited at 22 lb 4 oz (George Perry, 1932; IGFA tie with Manabu Kurita, 2009). Verify latest at IGFA."},
+    {species:"Smallmouth Bass (All-Tackle)", note:"11 lb 15 oz (Dale Hollow Lake, 1955) — check IGFA for details."},
+    {species:"Walleye (All-Tackle)", note:"25 lb (Old Hickory Lake, 1960) — verify at IGFA."},
+    {species:"Muskellunge (All-Tackle)", note:"67 lb 8 oz (Wisconsin, 1949) — verify at IGFA."}
   ];
+
+  // Bait → species lookup (aliases help matching). Add more as you go.
+  const baitToSpecies = {
+    'hot dog': { aliases:['hotdogs','hot-dog','hotdog'], species:['Channel Catfish','Blue Catfish','Flathead Catfish','Common Carp','Bowfin'] },
+    'corn': { aliases:['canned corn','sweet corn'], species:['Common Carp','Buffalo','Bluegill (panfish)'] },
+    'nightcrawler': { aliases:['worm','earthworm','crawler'], species:['Bluegill','Crappie','Yellow Perch','Walleye','Channel Catfish','Common Carp','Trout (stocked)'] },
+    'cut bait': { aliases:['cut shad','cutbait'], species:['Channel Catfish','Blue Catfish','Flathead Catfish','Northern Pike (incidental)'] },
+    'minnow': { aliases:['shiner','fathead','live minnow'], species:['Crappie','Walleye','Perch','Trout','Bass (all)'] },
+    'spinnerbait': { aliases:['spinner bait'], species:['Largemouth Bass','Smallmouth Bass','Northern Pike','Muskellunge (occasionally)'] },
+    'ned rig': { aliases:['ned'], species:['Largemouth Bass','Smallmouth Bass','Spotted Bass'] },
+    'drop shot': { aliases:['dropshot'], species:['Largemouth Bass','Smallmouth Bass'] },
+    'tube': { aliases:['tube jig'], species:['Smallmouth Bass','Largemouth Bass'] },
+    'frog': { aliases:['hollow-body frog','topwater frog'], species:['Largemouth Bass'] },
+    'swimbait': { aliases:['paddletail'], species:['Largemouth Bass','Smallmouth Bass','Walleye (larger baits)'] }
+  };
+
+  // Waterbody knowledge (sampled; expand over time)
+  const waterbodies = {
+    'Lake Michigan': { aliases:['michigan lake','the big lake'], species:['Chinook Salmon','Coho Salmon','Lake Trout','Brown Trout','Rainbow Trout/Steelhead','Smallmouth Bass','Yellow Perch','Walleye (some areas)','Common Carp'], note:'Species availability varies by season/harbor vs. open water; salmonids are stocked and roam pelagic zones.' },
+    'Lake Erie': { species:['Walleye','Smallmouth Bass','Yellow Perch','Steelhead (trib runs)','Channel Catfish'], note:'Western basin = walleye/perch; reefs/rocks for smallmouth; steelhead run tributaries in fall/spring.' },
+    'Lake Superior': { species:['Lake Trout','Brown Trout','Coho Salmon','Chinook Salmon','Whitefish','Brook Trout (coasters)','Smallmouth (bays)'], note:'Coldest/clearest; nearshore structure and river mouths are key.' },
+    'Lake Huron': { species:['Lake Trout','Walleye (Saginaw)','Smallmouth Bass','Brown/Steelhead (seasonal)'], note:'Saginaw Bay famous for walleye; rocky bays for smallmouth.' },
+    'Mississippi River': { aliases:['upper mississippi'], species:['Channel Catfish','Flathead Catfish','Blue Catfish (lower reaches)','Largemouth Bass','Smallmouth Bass (upper)','Walleye','Sauger','White Bass','Common Carp','Gar'], note:'Backwaters, wing dams, and current seams matter.' },
+    'Tennessee River (system)': { species:['Smallmouth Bass','Largemouth Bass','Spotted Bass','Crappie','Blue/Channel/Flathead Catfish','Striped/Hybrid (some reservoirs)'], note:'Tailraces and ledges are classic patterns.' },
+    'Generic Lake': { species:['Largemouth Bass','Bluegill','Crappie','Channel Catfish','Common Carp','Yellow Perch (north)','Walleye (north)'], note:'Expect bass/panfish/catfish broadly; northern natural lakes add walleye/perch.' },
+    'Generic River': { species:['Smallmouth Bass','Largemouth Bass (slower reaches)','Walleye/Sauger (cooler regions)','Channel/Flathead Catfish','Carp','Gar'], note:'Current seams, eddies, pools, and riffles organize fish.' },
+    'Generic Pond': { species:['Largemouth Bass','Bluegill','Crappie','Channel Catfish'], note:'Shoreline cover and simple food webs; great for beginners.' }
+  };
+
+  // Top freshwater spots by state (seed list — expand anytime)
+  const topSpots = {
+    'Michigan': [
+      {name:'Lake St. Clair', note:'Smallmouth & muskie powerhouse; drifting tubes/cranks on breaks.'},
+      {name:'Saginaw Bay', note:'Walleye trolling/spinners; spring–early summer hot.'},
+      {name:'Detroit River', note:'Spring walleye jig bite; vertical jig in current seams.'},
+      {name:'Houghton Lake', note:'Panfish/bass; weeds & flats.'}
+    ],
+    'Wisconsin': [
+      {name:'Green Bay/Door County', note:'Smallmouth & muskie; tubes/jerks on rock/grass edges.'},
+      {name:'Lake Winnebago', note:'Walleye & perch; reefs/bridges.'},
+      {name:'Mississippi River Pools 4–9', note:'Multi-species; wing dams/backwaters.'}
+    ],
+    'Minnesota': [
+      {name:'Mille Lacs', note:'Trophy smallmouth; rocks/reefs; jerkbaits/tubes.'},
+      {name:'Leech Lake', note:'Walleye/muskie; weed edges/points.'},
+      {name:'Lake of the Woods', note:'Walleye/sauger; summer drifting, winter ice bite.'}
+    ],
+    'Texas': [
+      {name:'Lake Fork', note:'Big largemouth; timber/points; jigs/swimbaits.'},
+      {name:'Sam Rayburn', note:'Grass & offshore schools; cranks/chatterbaits.'},
+      {name:'Toledo Bend', note:'Border reservoir; ledges & grass.'}
+    ],
+    'Florida': [
+      {name:'Lake Okeechobee', note:'Grass mats; flipping & frogs.'},
+      {name:'Kissimmee Chain (Toho)', note:'Spawning flats; speed worms/senkos/frogs.'},
+      {name:'Rodman Reservoir', note:'Wood/vegetation; big bass potential.'}
+    ],
+    'California': [
+      {name:'Clear Lake', note:'Trophy largemouth; swimbaits/jigs/cranks.'},
+      {name:'California Delta (fresh/brackish)', note:'Frogs, chatterbaits, flipping in tidal grass.'},
+      {name:'Lake Shasta', note:'Spotted bass/trout; offshore structure.'}
+    ],
+    'New York': [
+      {name:'St. Lawrence River', note:'Elite smallmouth; current + rock.'},
+      {name:'Oneida Lake', note:'Walleye/smallmouth; grass/rock mix.'},
+      {name:'Finger Lakes (Cayuga/Seneca)', note:'Lake trout/salmonids + SMB; points & drops.'}
+    ],
+    'Ohio': [
+      {name:'Lake Erie (Western Basin)', note:'Walleye/perch; reefs/drifts.'},
+      {name:'Alum Creek', note:'SMB/LMB; points & coves.'},
+      {name:'Mosquito Creek Lake', note:'Crappie/walleye; timber & flats.'}
+    ],
+    'Pennsylvania': [
+      {name:'Susquehanna River', note:'Smallmouth; current seams/eddies.'},
+      {name:'Pymatuning Reservoir', note:'Walleye/crappie; humps & weeds.'},
+      {name:'Erie Tribs (fresh reaches)', note:'Seasonal steelhead runs; check regs.'}
+    ],
+    'Illinois': [
+      {name:'Fox Chain O’Lakes', note:'Multi-species; channels/bridges.'},
+      {name:'Lake Shelbyville', note:'Crappie/bass; timber/points.'},
+      {name:'Heidecke Lake', note:'Hybrid stripers/cats; wind-driven bite.'}
+    ]
+  };
 
   const regsDirectory = [
     {state:'United States — Directory', url:'https://www.takemefishing.org/'},
@@ -552,7 +709,7 @@ function buildDB(){
 
   const links = { IGFA:'https://igfa.org/world-records/' };
 
-  return {species, knots, facts, baitRoulette, conditions, temps, records, regsDirectory, links};
+  return {species, knots, facts, baitRoulette, conditions, temps, records, baitToSpecies, waterbodies, topSpots, regsDirectory, links};
 }
 </script>
 </body>
