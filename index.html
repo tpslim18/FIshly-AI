@@ -1,458 +1,611 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fishly-AI — Your Freshwater Fishing Buddy 🎣</title>
-  <style>
-    :root{--bg:#eef9f5;--card:#ffffff;--ink:#1f2937;--muted:#64748b;--accent:#2b6777;--accent2:#52ab98;--border:#d1d5db}
-    *{box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);margin:0}
-    header{background:var(--accent);color:#fff;padding:12px 10px;text-align:center}
-    header h1{margin:0;font-size:22px}
-    #buttons{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
-    .btn{margin:0;padding:8px 12px;border:none;border-radius:10px;cursor:pointer;background:var(--accent2);color:#fff;font-weight:600}
-    .btn:hover{filter:brightness(.95)}
-    .wrap{padding:10px;max-width:1100px;margin:0 auto}
-    #chat{height:360px;overflow-y:auto;padding:10px;background:#fff;margin:10px 0;border-radius:10px;border:1px solid var(--border)}
-    .row{display:flex;margin:8px 0}
-    .bubble{max-width:80%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.04)}
-    .user .bubble{margin-left:auto;background:var(--accent2);color:#fff}
-    .bot  .bubble{margin-right:auto;background:#fff;border:1px solid var(--border)}
-    .composer{display:flex;gap:8px}
-    #msg{flex:1;padding:10px;border:1px solid var(--border);border-radius:10px}
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fishly-AI — Your Freshwater Fishing Buddy</title>
+<style>
+  :root{
+    --bg:#f6f7fb;--card:#fff;--ink:#0f172a;--muted:#6b7280;--sky:#0ea5e9;--border:#e5e7eb;
+    --accent:#0ea5e9; --accent-2:#0369a1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+  header{position:sticky;top:0;background:#ffffcc;border-bottom:1px solid var(--border);z-index:10}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+  h1{margin:0;font-size:20px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{appearance:none;border:1px solid var(--border);background:#fff;padding:8px 12px;border-radius:999px;cursor:pointer;transition:.15s}
+  .btn:hover{background:#f1f5f9}
+  .btn.primary{background:var(--sky);border-color:var(--sky);color:#fff}
+  .btn.primary:hover{filter:brightness(.95)}
 
-    dialog{border:0;border-radius:12px;padding:0;max-width:900px;width:92vw}
-    dialog::backdrop{background:rgba(0,0,0,.35)}
-    .modal{padding:12px}
-    .grid{display:grid;gap:10px}
-    .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .card{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
-    .search{display:flex;gap:8px}
-    .search input, select, input[type=number]{padding:8px;border:1px solid var(--border);border-radius:8px;width:100%}
-    summary{cursor:pointer}
-    ol{margin:6px 0 0 18px}
-    small{color:var(--muted)}
-    a{color:#0369a1}
-  </style>
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 6px 20px rgba(10,10,20,.04)}
+  .chat{height:70vh;display:flex;flex-direction:column}
+  .msgs{flex:1;overflow:auto;padding:12px}
+  .msg{display:flex;margin:8px 0}
+  .bubble{max-width:78%;padding:10px 12px;border-radius:16px;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .me   .bubble{margin-left:auto;background:var(--sky);color:#fff}
+  .bot  .bubble{margin-right:auto;background:#fff;border:1px solid var(--border)}
+  .composer{display:flex;gap:10px;border-top:1px solid var(--border);padding:10px}
+  textarea{flex:1;resize:vertical;min-height:64px;max-height:220px;padding:10px;border-radius:12px;border:1px solid var(--border)}
+  .mute{color:var(--muted)}
+  a{color:var(--accent-2)}
+  .grid{display:grid;gap:10px}
+  .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .card{border:1px solid var(--border);border-radius:14px;padding:10px;background:#f8fafc}
+  summary{cursor:pointer}
+  ol{margin:8px 0 0 18px}
+  small{color:var(--muted)}
+  table{width:100%;border-collapse:collapse}
+  td,th{border-bottom:1px solid var(--border);padding:8px;text-align:left}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#e2e8f0;margin-left:6px;font-size:12px}
+
+  /* Modal system (no <dialog>) */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50}
+  .modal.open{display:flex}
+  .modal .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+  .modal .box{position:relative;max-width:900px;width:92vw;max-height:85vh;overflow:auto;border-radius:18px;background:#fff;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.2)}
+  .modal header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border)}
+  .modal .content{padding:12px 16px}
+  .search{display:flex;gap:8px}
+  .search input, .content select, .content input[type=number]{padding:8px;border:1px solid var(--border);border-radius:10px;width:100%}
+</style>
 </head>
 <body>
   <header>
-    <h1>Fishly-AI 🎣</h1>
-    <p style="margin:6px 0 0">Hello, I’m Fishly‑AI — your AI fishing buddy!</p>
-    <div id="buttons">
-      <button class="btn" id="btnKnots">Knot Tutor</button>
-      <button class="btn" id="btnFact">Random Fact</button>
-      <button class="btn" id="btnRoulette">🎲 Bait Roulette</button>
-      <button class="btn" id="btnEstimator">Weight Estimator</button>
-      <button class="btn" id="btnRecords">Records</button>
-      <button class="btn" id="btnRegs">Regulations</button>
-      <button class="btn" id="btnSpots">Top Spots by State</button>
+    <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <h1>🐟 Fishly-AI</h1>
+      <div class="chips">
+        <button class="btn" id="btnKnots">Knot Tutor</button>
+        <button class="btn" id="btnFact">Random Fact</button>
+        <button class="btn" id="btnRoulette">🎲 Bait Roulette</button>
+        <button class="btn" id="btnEstimator">Weight Estimator</button>
+        <button class="btn" id="btnRecords">Records</button>
+        <button class="btn" id="btnRegs">Regulations</button>
+        <button class="btn" id="btnSpots">Top Spots by State</button>
+      </div>
     </div>
   </header>
 
   <main class="wrap">
-    <div id="chat"></div>
-    <div class="composer">
-      <input id="msg" placeholder="Ask about species, baits, seasons, temps, knots, or a waterbody…" />
-      <button class="btn" id="send">Send</button>
+    <div class="panel chat">
+      <div class="msgs" id="msgs"></div>
+      <div class="composer">
+        <textarea id="input" placeholder="Ask about species, baits, water temps, knots, or a specific lake/river… (Enter to send)"></textarea>
+        <button class="btn primary" id="send">Send</button>
+      </div>
     </div>
-    <small>Tip: Try “what fish are in Lake Michigan”, “what fish will be attracted to hot dogs”, or “best baits for smallmouth in summer on rock”.</small>
+    <p class="mute" style="margin:.75rem 6px 0">Tip: try “what fish are in Lake Michigan”, “what fish are attracted to hot dogs”, or “best baits for smallmouth in summer on rock”.</p>
   </main>
 
-  <!-- Top Spots by State -->
-  <dialog id="dlgSpots"><div class="modal">
-    <header class="wrap" style="padding:8px 6px"><h2>Top Freshwater Spots by State</h2><small>Browse popular lakes/rivers. Always check seasonal patterns, access, and current regulations.</small></header>
-    <div class="wrap search" style="padding:0 6px 8px"><input id="spotSearch" placeholder="Type a state name (e.g., Michigan)" /></div>
-    <div class="wrap"><div class="grid cols-3" id="spotGrid"></div></div>
-    <div class="wrap" style="text-align:right"><button class="btn" id="btnCloseSpots">Close</button></div>
-  </div></dialog>
-
-  <!-- Knot Tutor -->
-  <dialog id="dlgKnots"><div class="modal">
-    <header class="wrap" style="padding:8px 6px"><h2>Quick Knot Tutor</h2><small>Lubricate, dress neatly, and test your knot.</small></header>
-    <div class="wrap"><div class="grid cols-2" id="knotGrid"></div></div>
-    <div class="wrap" style="text-align:right"><button class="btn" onclick="dlgKnots.close()">Close</button></div>
-  </div></dialog>
-
-  <!-- Weight Estimator -->
-  <dialog id="dlgEstimator"><div class="modal">
-    <header class="wrap" style="padding:8px 6px"><h2>Weight Estimator</h2></header>
-    <div class="wrap grid cols-3">
-      <label class="card"><div>Species</div>
-        <select id="estSpecies"></select>
-      </label>
-      <label class="card"><div>Units</div>
-        <select id="estUnits"><option value="in">Inches</option><option value="cm">Centimeters</option></select>
-      </label>
-      <label class="card"><div>Length</div>
-        <input id="estLen" type="number" step="0.1" value="18" />
-      </label>
-      <label class="card"><div>Girth (optional)</div>
-        <input id="estGirth" type="number" step="0.1" value="0" />
-      </label>
-      <div class="card" style="display:flex;align-items:end"><button class="btn" id="btnCalc">Estimate</button></div>
+  <!-- Modals -->
+  <div class="modal" id="mdlKnots">
+    <div class="backdrop" data-close="mdlKnots"></div>
+    <div class="box">
+      <header class="wrap" style="padding:10px 12px"><h2>Quick Knot Tutor</h2><small>Lubricate before cinching; dress knots neatly and test.</small></header>
+      <div class="content">
+        <div class="grid cols-2" id="knotGrid"></div>
+        <div style="text-align:right;margin-top:10px"><button class="btn" data-close="mdlKnots">Close</button></div>
+      </div>
     </div>
-    <div class="wrap"><small>Formula: if girth is provided → <strong>(girth² × length) / 800</strong> (in → lb). Without girth → length³/K (slender≈2800, moderate≈1600, stocky≈1400). A scale is best.</small></div>
-    <div class="wrap" style="text-align:right"><button class="btn" onclick="dlgEstimator.close()">Close</button></div>
-  </div></dialog>
+  </div>
 
-  <!-- Records -->
-  <dialog id="dlgRecords"><div class="modal">
-    <header class="wrap" style="padding:8px 6px"><h2>Freshwater Records (quick reference)</h2></header>
-    <div class="wrap" id="recordsList"></div>
-    <div class="wrap"><small>For current, official listings, check the IGFA world records directory.</small></div>
-    <div class="wrap" style="text-align:right"><button class="btn" onclick="dlgRecords.close()">Close</button></div>
-  </div></dialog>
+  <div class="modal" id="mdlEstimator">
+    <div class="backdrop" data-close="mdlEstimator"></div>
+    <div class="box">
+      <header class="wrap" style="padding:10px 12px"><h2>Weight Estimator</h2></header>
+      <div class="content">
+        <div class="grid cols-3">
+          <label class="card"><div>Species</div>
+            <select id="estSpecies"></select>
+          </label>
+          <label class="card"><div>Units</div>
+            <select id="estUnits"><option value="in">Inches</option><option value="cm">Centimeters</option></select>
+          </label>
+          <label class="card"><div>Length</div>
+            <input id="estLen" type="number" step="0.1" value="18"/>
+          </label>
+          <label class="card"><div>Girth (optional)</div>
+            <input id="estGirth" type="number" step="0.1" value="0"/>
+          </label>
+          <div class="card" style="display:flex;align-items:end"><button class="btn primary" id="btnCalc">Estimate</button></div>
+        </div>
+        <small>Formula: with girth → <strong>(girth² × length) / 800</strong> (in→lb). Without → length³/K (slender≈2800, moderate≈1600, stocky≈1400). A scale is always best.</small>
+        <div style="text-align:right;margin-top:10px"><button class="btn" data-close="mdlEstimator">Close</button></div>
+      </div>
+    </div>
+  </div>
 
-  <!-- Regulations directory -->
-  <dialog id="dlgRegs"><div class="modal">
-    <header class="wrap" style="padding:8px 6px"><h2>Regulations — Find Your State</h2><small>Rules change. Always verify on the official site before keeping fish.</small></header>
-    <div class="wrap search" style="padding:0 6px 8px"><input id="regSearch" placeholder="Filter states…" /></div>
-    <div class="wrap"><div class="grid cols-3" id="regGrid"></div></div>
-    <div class="wrap" style="text-align:right"><button class="btn" onclick="dlgRegs.close()">Close</button></div>
-  </div></dialog>
+  <div class="modal" id="mdlRecords">
+    <div class="backdrop" data-close="mdlRecords"></div>
+    <div class="box">
+      <header class="wrap" style="padding:10px 12px"><h2>Freshwater Records (quick reference)</h2></header>
+      <div class="content">
+        <div id="recordsList"></div>
+        <small>For current official listings, check the IGFA world records directory.</small>
+        <div style="text-align:right;margin-top:10px"><button class="btn" data-close="mdlRecords">Close</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="mdlRegs">
+    <div class="backdrop" data-close="mdlRegs"></div>
+    <div class="box">
+      <header class="wrap" style="padding:10px 12px"><h2>Regulations — Find Your State</h2><small>Rules change often by species, waterbody and season. Always check the latest official regulations.</small></header>
+      <div class="content">
+        <div class="search" style="margin-bottom:10px"><input id="regSearch" placeholder="Filter states…"/></div>
+        <div class="grid cols-3" id="regGrid"></div>
+        <div class="card" style="margin-top:10px"><strong>Not sure?</strong> Try: <a href="https://www.takemefishing.org/" target="_blank" rel="noopener">TakeMeFishing — Select Your State</a></div>
+        <div style="text-align:right;margin-top:10px"><button class="btn" data-close="mdlRegs">Close</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="mdlSpots">
+    <div class="backdrop" data-close="mdlSpots"></div>
+    <div class="box">
+      <header class="wrap" style="padding:10px 12px"><h2>Top Freshwater Spots by State</h2><small>Browse popular lakes/rivers. Check access & seasons.</small></header>
+      <div class="content">
+        <div class="search" style="margin-bottom:10px"><input id="spotSearch" placeholder="Type a state name (e.g., Michigan)"/></div>
+        <div class="grid cols-3" id="spotGrid"></div>
+        <div style="text-align:right;margin-top:10px"><button class="btn" data-close="mdlSpots">Close</button></div>
+      </div>
+    </div>
+  </div>
 
 <script>
-// ===== helpers =====
-const $ = s => document.querySelector(s);
-const chat = $('#chat');
-function addMsg(role, text){
-  const row = document.createElement('div');
-  row.className = 'row ' + (role==='bot'?'bot':'user');
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.textContent = text;
-  row.appendChild(bubble);
-  chat.appendChild(row);
-  chat.scrollTop = chat.scrollHeight;
-}
-// show JS errors in the chat to help diagnose
-window.addEventListener('error', (e)=>{ try{ addMsg('bot','⚠️ Script error: '+(e?.message||'unknown')); }catch(_){} });
+(function(){
+  // ===== safe query =====
+  function $(sel, root){ return (root||document).querySelector(sel); }
+  function $all(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
 
-// ===== data =====
-function buildDB(){
-  const species = {
-    "Largemouth Bass": { sci:"Micropterus salmoides", aliases:["largie","bucketmouth"], body:"moderate",
-      diet:["minnows","sunfish","crayfish","frogs"],
-      spawn:{tempF:[60,75], months:["Apr","May","Jun"]},
-      tactics:{spring:["lipless on flats","weightless stickbait near beds"], summer:["frogs on mats","Texas rigs"], fall:["spinnerbait in wind","swimbait on shad"], winter:["ned rig slow","blade bait 20–35 ft"]}
-    },
-    "Smallmouth Bass": { sci:"Micropterus dolomieu", aliases:["smallie","bronzeback"], body:"moderate",
-      diet:["crayfish","baitfish"], spawn:{tempF:[55,65], months:["May","Jun"]},
-      tactics:{spring:["tube on gravel flats","jerkbait 48–58°F"], summer:["topwater dawn","spinnerbait in wind"], fall:["blade/jerk on bait"], winter:["hair jig slow"]}
-    },
-    "Walleye": { sci:"Sander vitreus", aliases:["marble-eye"], body:"slender",
-      diet:["perch","shiners","smelt"], spawn:{tempF:[42,50], months:["Mar","Apr"]},
-      tactics:{spring:["jig+minnow seams","night stickbaits"], summer:["bottom-bouncer + spinner","troll cranks 1.5–2.5 mph"], fall:["jigging rap on breaks"], winter:["spoons/raps"]}
-    },
-    "Northern Pike": { sci:"Esox lucius", body:"slender", diet:["fish","frogs"], spawn:{tempF:[40,52], months:["Mar","Apr"]}, tactics:{spring:["spoons/jerks in bays"], summer:["spinnerbaits over grass"], fall:["big glides/rubber"], winter:["tip-ups"]} },
-    "Muskellunge": { sci:"Esox masquinongy", body:"slender", diet:["fish","suckers"], spawn:{tempF:[50,60], months:["Apr","May"]}, tactics:{spring:["bucktails/small cranks"], summer:["bucktails, topwater, big rubber"], fall:["giant rubber/jerks"], winter:["slow big rubber"]} },
-    "Crappie": { sci:"Pomoxis spp.", body:"stocky", diet:["minnows","insects"], spawn:{tempF:[58,68], months:["Apr","May"]}, tactics:{spring:["float+minnow around cover"], summer:["shoot docks"], fall:["follow shad"], winter:["deep timber"]} },
-    "Bluegill": { sci:"Lepomis macrochirus", body:"stocky", diet:["insects","larvae"], spawn:{tempF:[67,80], months:["May","Jun","Jul"]}, tactics:{spring:["worms under bobber"], summer:["crickets by pads"], fall:["slow jigs"], winter:["ice micro jigs"]} },
-    "Channel Catfish": { sci:"Ictalurus punctatus", body:"stocky", diet:["cut bait","invertebrates"], spawn:{tempF:[70,84], months:["Jun","Jul"]}, tactics:{spring:["fresh cut bait on seams"], summer:["night on flats"], fall:["drift cut bait"], winter:["deep holes"]} },
-    "Flathead Catfish": { sci:"Pylodictis olivaris", body:"stocky", diet:["live fish"], spawn:{tempF:[66,75], months:["Jun","Jul"]}, tactics:{spring:["live bait near cover"], summer:["night big live baits"], fall:["slow drifts"], winter:["deep holes"]} },
-    "Common Carp": { sci:"Cyprinus carpio", body:"stocky", diet:["detritus","invertebrates","corn","boilies"], spawn:{tempF:[60,72], months:["May","Jun"]}, tactics:{spring:["pack/method feeder"], summer:["float corn in margins"], fall:["boilies on routes"], winter:["small, slow"]} },
-    "Rainbow Trout": { sci:"Oncorhynchus mykiss", body:"slender", diet:["insects","scuds","baitfish"], spawn:{tempF:[42,52], months:["Mar","Apr"]}, tactics:{spring:["nymphs under indicator","small spoons"], summer:["dry flies evenings"], fall:["streamers"], winter:["midges"]} },
-    "Brown Trout": { sci:"Salmo trutta", body:"slender", diet:["insects","crustaceans","baitfish"], spawn:{tempF:[44,52], months:["Oct","Nov"]}, tactics:{spring:["nymphs/small cranks"], summer:["night streamers"], fall:["eggs+streamers"], winter:["tiny midges"]} },
-    "Brook Trout": { sci:"Salvelinus fontinalis", body:"slender", diet:["insects","small minnows"], spawn:{tempF:[40,50], months:["Oct","Nov"]}, tactics:{spring:["small spinners"], summer:["dry flies"], fall:["streamers"], winter:["tiny nymphs"]} }
-  };
+  // ===== chat helpers =====
+  var msgs = $('#msgs');
+  function addMsg(role, text){
+    var row = document.createElement('div');
+    row.className = 'msg ' + (role==='bot'?'bot':'me');
+    var b = document.createElement('div');
+    b.className = 'bubble';
+    b.textContent = text;
+    row.appendChild(b);
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  // surface JS errors in-chat
+  window.addEventListener('error', function(e){
+    try{ addMsg('bot','⚠️ Script error: ' + (e && e.message ? e.message : 'unknown')); }catch(_){}
+  });
 
-  const knots = {
-    "Palomar Knot": { strength:"High", notes:"Great with braid.", steps:[
-      "Double 6–8 inches of line and pass loop through hook eye.",
-      "Tie a loose overhand knot with doubled line (hook hanging).",
-      "Pass hook/lure through the loop.",
-      "Lubricate and pull standing line + tag to snug; trim tag." ] },
-    "Improved Clinch": { strength:"Med", notes:"Classic mono/fluoro.", steps:[
-      "Pass tag through eye, wrap 5–7 turns around standing line.",
-      "Feed tag through small loop at eye, then back through big loop.",
-      "Lubricate and cinch." ] },
-    "Uni Knot": { strength:"High", notes:"Versatile terminal knot.", steps:[
-      "Pass tag through eye and lay parallel to standing line.",
-      "Form a loop and wrap 5–7 turns around both lines through loop.",
-      "Lubricate; pull tag to snug and slide down." ] },
-    "Double Uni (line-to-line)": { strength:"High", notes:"Great for braid-to-leader.", steps:[
-      "Overlap line ends 8–10 inches.",
-      "With line A, tie a Uni (5–7 wraps) around both lines; snug.",
-      "Repeat with line B.",
-      "Pull standing lines to slide knots together; trim tags." ] },
-    "FG Knot (braid to leader)": { strength:"Very High", notes:"Slim profile; practice helps.", steps:[
-      "Lay leader taut. Wrap braid over leader alternating half-hitches 16–22 times.",
-      "Set wraps by pulling firmly on braid and leader.",
-      "Finish with alternating half-hitches and a Rizzuto finish.",
-      "Trim leader tag close." ] },
-    "Snell Knot": { strength:"High", notes:"Straight pull on flipping hooks.", steps:[
-      "Pass tag through hook eye toward point and down shank.",
-      "Lay tag along shank and wrap 6–8 tight coils.",
-      "Pass tag back out through eye same direction; tighten." ] },
-    "Loop Knot (Rapala)": { strength:"Med", notes:"Gives lures action.", steps:[
-      "Tie a loose overhand knot 8\" from the tag.",
-      "Run tag through the eye, then back through the overhand loop.",
-      "Wrap tag 3–5 times around standing line and return through loop.",
-      "Lubricate and cinch a small loop ahead of the lure." ] }
-  };
+  // ===== knowledge base =====
+  function buildDB(){
+    var species = {
+      "Largemouth Bass": { sci:"Micropterus salmoides", aliases:["largie","bucketmouth"], body:"moderate",
+        diet:["minnows","sunfish","crayfish","frogs"],
+        spawn:{tempF:[60,75], months:["Apr","May","Jun"]},
+        tactics:{spring:["lipless on flats","weightless stickbait near beds"], summer:["frogs on mats","Texas rigs"],
+                 fall:["spinnerbait in wind","swimbait on shad"], winter:["ned rig slow","blade bait 20–35 ft"]}
+      },
+      "Smallmouth Bass": { sci:"Micropterus dolomieu", aliases:["smallie","bronzeback"], body:"moderate",
+        diet:["crayfish","baitfish"], spawn:{tempF:[55,65], months:["May","Jun"]},
+        tactics:{spring:["tube on gravel flats","jerkbait 48–58°F"], summer:["topwater dawn","spinnerbait in wind"],
+                 fall:["blade/jerk on bait"], winter:["hair jig slow"]}
+      },
+      "Walleye": { sci:"Sander vitreus", aliases:["marble-eye"], body:"slender",
+        diet:["perch","shiners","smelt"], spawn:{tempF:[42,50], months:["Mar","Apr"]},
+        tactics:{spring:["jig+minnow seams","night stickbaits"], summer:["bottom-bouncer + spinner","troll cranks 1.5–2.5 mph"],
+                 fall:["jigging rap on breaks"], winter:["spoons/raps"]}
+      },
+      "Northern Pike": { sci:"Esox lucius", body:"slender", diet:["fish","frogs"],
+        spawn:{tempF:[40,52], months:["Mar","Apr"]},
+        tactics:{spring:["spoons/jerks in bays"], summer:["spinnerbaits over grass"], fall:["big glides/rubber"], winter:["tip-ups"]}
+      },
+      "Muskellunge": { sci:"Esox masquinongy", body:"slender", diet:["fish","suckers"],
+        spawn:{tempF:[50,60], months:["Apr","May"]},
+        tactics:{spring:["bucktails/small cranks"], summer:["bucktails, topwater, big rubber"], fall:["giant rubber/jerks"], winter:["slow big rubber"]}
+      },
+      "Crappie": { sci:"Pomoxis spp.", body:"stocky", diet:["minnows","insects"],
+        spawn:{tempF:[58,68], months:["Apr","May"]},
+        tactics:{spring:["float+minnow"], summer:["shoot docks"], fall:["follow shad"], winter:["deep timber"]}
+      },
+      "Bluegill": { sci:"Lepomis macrochirus", body:"stocky", diet:["insects","larvae"],
+        spawn:{tempF:[67,80], months:["May","Jun","Jul"]},
+        tactics:{spring:["worms under bobber"], summer:["crickets by pads"], fall:["slow jigs"], winter:["ice micro jigs"]}
+      },
+      "Channel Catfish": { sci:"Ictalurus punctatus", body:"stocky", diet:["cut bait","invertebrates"],
+        spawn:{tempF:[70,84], months:["Jun","Jul"]},
+        tactics:{spring:["fresh cut bait on seams"], summer:["night on flats"], fall:["drift cut bait"], winter:["deep holes"]}
+      },
+      "Flathead Catfish": { sci:"Pylodictis olivaris", body:"stocky", diet:["live fish"],
+        spawn:{tempF:[66,75], months:["Jun","Jul"]},
+        tactics:{spring:["live bait near cover"], summer:["night big live baits"], fall:["slow drifts"], winter:["deep holes"]}
+      },
+      "Common Carp": { sci:"Cyprinus carpio", body:"stocky", diet:["detritus","invertebrates","corn","boilies"],
+        spawn:{tempF:[60,72], months:["May","Jun"]},
+        tactics:{spring:["pack/method feeder"], summer:["float corn in margins"], fall:["boilies on routes"], winter:["small, slow"]}
+      },
+      "Rainbow Trout": { sci:"Oncorhynchus mykiss", body:"slender", diet:["insects","scuds","baitfish"],
+        spawn:{tempF:[42,52], months:["Mar","Apr"]},
+        tactics:{spring:["nymphs under indicator","small spoons"], summer:["dry flies evenings"], fall:["streamers"], winter:["midges"]}
+      },
+      "Brown Trout": { sci:"Salmo trutta", body:"slender", diet:["insects","crustaceans","baitfish"],
+        spawn:{tempF:[44,52], months:["Oct","Nov"]},
+        tactics:{spring:["nymphs/small cranks"], summer:["night streamers"], fall:["eggs+streamers"], winter:["tiny midges"]}
+      },
+      "Brook Trout": { sci:"Salvelinus fontinalis", body:"slender", diet:["insects","small minnows"],
+        spawn:{tempF:[40,50], months:["Oct","Nov"]},
+        tactics:{spring:["small spinners"], summer:["dry flies"], fall:["streamers"], winter:["tiny nymphs"]}
+      }
+    };
 
-  const facts = [
-    "The International Game Fish Association (IGFA) was founded in 1939 and maintains official world records.",
-    "Ray Scott launched the first national pro bass circuit in 1967, catalyzing modern tournament fishing.",
-    "Bluegill often spawn in colonies; look for craters on sand/gravel flats in late spring.",
-    "Bass don’t have eyelids — low light and wind chop often improve feeding confidence.",
-    "Walleye frequently run upstream at night to broadcast eggs over rock in early spring (low 40s °F)."
-  ];
+    var knots = {
+      "Palomar Knot": { strength:"High", notes:"Great with braid.", steps:[
+        "Double 6–8 inches of line and pass loop through hook eye.",
+        "Tie a loose overhand knot with doubled line (hook hanging).",
+        "Pass hook/lure through the loop.",
+        "Lubricate and pull standing line + tag to snug; trim tag."
+      ]},
+      "Improved Clinch": { strength:"Med", notes:"Classic mono/fluoro.", steps:[
+        "Pass tag through eye, wrap 5–7 turns around standing line.",
+        "Feed tag through small loop at eye, then back through big loop.",
+        "Lubricate and cinch."
+      ]},
+      "Uni Knot": { strength:"High", notes:"Versatile terminal knot.", steps:[
+        "Pass tag through eye and lay parallel to standing line.",
+        "Form a loop and wrap 5–7 turns around both lines through loop.",
+        "Lubricate; pull tag to snug and slide down."
+      ]},
+      "Double Uni (line-to-line)": { strength:"High", notes:"Great for braid-to-leader.", steps:[
+        "Overlap line ends 8–10 inches.",
+        "With line A, tie a Uni (5–7 wraps) around both lines; snug.",
+        "Repeat with line B.",
+        "Pull standing lines to slide knots together; trim tags."
+      ]},
+      "FG Knot (braid to leader)": { strength:"Very High", notes:"Slim profile; practice helps.", steps:[
+        "Lay leader taut. Wrap braid over leader alternating half-hitches 16–22 times.",
+        "Set wraps by pulling firmly on braid and leader.",
+        "Finish with alternating half-hitches and a Rizzuto finish.",
+        "Trim leader tag close."
+      ]},
+      "Snell Knot": { strength:"High", notes:"Straight pull on flipping hooks.", steps:[
+        "Pass tag through hook eye toward point and down shank.",
+        "Lay tag along shank and wrap 6–8 tight coils.",
+        "Pass tag back out through eye same direction; tighten."
+      ]},
+      "Loop Knot (Rapala)": { strength:"Med", notes:"Gives lures more action.", steps:[
+        "Tie a loose overhand knot 8\" from the tag.",
+        "Run tag through the eye, then back through the overhand loop.",
+        "Wrap tag 3–5 times around standing line and return through loop.",
+        "Lubricate and cinch a small loop ahead of the lure."
+      ]}
+    };
 
-  const baitRoulette = [
-    {name:"Weightless Stickbait", tip:"Skip under docks; fall on slack, then twitch-pause."},
-    {name:"Spinnerbait", tip:"Slow-roll in stained, windy water along grass or wood."},
-    {name:"Squarebill Crankbait", tip:"Bang it off cover in 2–6 ft; deflections trigger bites."},
-    {name:"Jig + Craw", tip:"Pitch to shade and laydowns; hop-pause."},
-    {name:"Chatterbait", tip:"Swim along grass edges; paddle-tail trailer."},
-    {name:"Frog (Hollow-Body)", tip:"Walk it over mats at dawn/dusk; wait a beat before hookset."},
-    {name:"Ned Rig", tip:"Drag and deadstick in cold water; subtle moves."},
-    {name:"Swimbait (3–4\")", tip:"Slow roll around bait schools and points."},
-    {name:"Drop Shot", tip:"Hold just off bottom; shake slack, not the weight."},
-    {name:"Tube", tip:"Crayfish imitation on rocks for smallmouth."}
-  ];
+    var facts = [
+      "The International Game Fish Association (IGFA) was founded in 1939 and maintains official world records.",
+      "Ray Scott launched the first national pro bass circuit in 1967, catalyzing modern tournament fishing.",
+      "Bluegill often spawn in colonies; look for multiple craters on sand/gravel flats in late spring.",
+      "Bass don’t have eyelids — low light and wind chop often improve their feeding confidence.",
+      "Walleye frequently run upstream at night to broadcast eggs over rock in early spring (low 40s °F)."
+    ];
 
-  const conditions = {
-    season:{ spring:"Shallow warming flats; reaction baits on wind; finesse near beds.", summer:"Early/late topwater; mid-day deeper or shade.", fall:"Follow bait into creeks; cranks/jerks.", winter:"Downsize and slow: ned, hair, blade." },
-    clarity:{ clear:"Natural colors, light leaders.", stained:"Chartreuse/white; spinnerbaits, bladed jigs.", dirty:"Big thump, dark colors.", muddy:"Slow, tight wobble; add scent." },
-    cover:{ grass:"Swim jigs, chatterbaits, frogs.", wood:"Squarebills, jigs, Texas rigs.", rock:"Cranks, tubes, football jigs.", docks:"Skip plastics/jigs." }
-  };
+    var baitRoulette = [
+      {name:"Weightless Stickbait", tip:"Skip under docks; fall on slack, then twitch-pause."},
+      {name:"Spinnerbait", tip:"Slow-roll in stained, windy water along grass or wood."},
+      {name:"Squarebill Crankbait", tip:"Bang it off cover in 2–6 ft; deflections trigger bites."},
+      {name:"Jig + Craw", tip:"Pitch to shade and laydowns; hop-pause."},
+      {name:"Chatterbait", tip:"Swim along grass edges; paddle-tail trailer."},
+      {name:"Frog (Hollow-Body)", tip:"Walk it over mats at dawn/dusk; wait a beat before you set."},
+      {name:"Ned Rig", tip:"Drag and deadstick in cold water; subtle moves."},
+      {name:"Swimbait (3–4\")", tip:"Slow roll around bait schools and points."},
+      {name:"Drop Shot", tip:"Hold just off bottom; shake slack, not the weight."},
+      {name:"Tube", tip:"Crayfish imitation on rocks for smallmouth."}
+    ];
 
-  const temps = { largemouth:{spawn:[60,75]}, smallmouth:{spawn:[55,65]}, walleye:{spawn:[42,50]}, pike:{spawn:[40,52]}, crappie:{spawn:[58,68]}, bluegill:{spawn:[67,80]} };
+    var baitToSpecies = {
+      'hot dog': { aliases:['hotdogs','hot-dog','hotdog'], species:['Channel Catfish','Blue Catfish','Flathead Catfish','Common Carp','Bowfin'] },
+      'corn': { aliases:['canned corn','sweet corn'], species:['Common Carp','Buffalo','Bluegill (panfish)'] },
+      'nightcrawler': { aliases:['worm','earthworm','crawler'], species:['Bluegill','Crappie','Yellow Perch','Walleye','Channel Catfish','Common Carp','Trout (stocked)'] },
+      'cut bait': { aliases:['cut shad','cutbait'], species:['Channel Catfish','Blue Catfish','Flathead Catfish','Northern Pike (incidental)'] },
+      'minnow': { aliases:['shiner','fathead','live minnow'], species:['Crappie','Walleye','Perch','Trout','Bass (all)'] },
+      'spinnerbait': { aliases:['spinner bait'], species:['Largemouth Bass','Smallmouth Bass','Northern Pike','Muskellunge (occasionally)'] },
+      'ned rig': { aliases:['ned'], species:['Largemouth Bass','Smallmouth Bass','Spotted Bass'] },
+      'drop shot': { aliases:['dropshot'], species:['Largemouth Bass','Smallmouth Bass'] },
+      'tube': { aliases:['tube jig'], species:['Smallmouth Bass','Largemouth Bass'] },
+      'frog': { aliases:['hollow-body frog','topwater frog'], species:['Largemouth Bass'] },
+      'swimbait': { aliases:['paddletail'], species:['Largemouth Bass','Smallmouth Bass','Walleye (larger baits)'] }
+    };
 
-  const records = [
-    {species:"Largemouth Bass (All‑Tackle)", note:"Often cited 22 lb 4 oz (1932) and 22 lb 5 oz tie (2009). Verify latest at IGFA."},
-    {species:"Smallmouth Bass (All‑Tackle)", note:"11 lb 15 oz (1955) — check IGFA."},
-    {species:"Walleye (All‑Tackle)", note:"25 lb (1960) — verify at IGFA."},
-    {species:"Muskellunge (All‑Tackle)", note:"67 lb 8 oz (1949) — verify at IGFA."}
-  ];
+    var waterbodies = {
+      'Lake Michigan': { species:['Chinook Salmon','Coho Salmon','Lake Trout','Brown Trout','Rainbow Trout/Steelhead','Smallmouth Bass','Yellow Perch','Walleye (some areas)','Common Carp'], note:'Harbors vs. open water differ; salmonids roam pelagic zones.' },
+      'Lake Erie': { species:['Walleye','Smallmouth Bass','Yellow Perch','Steelhead (trib runs)','Channel Catfish'], note:'Western basin = walleye/perch; reefs/rocks for smallmouth.' },
+      'Lake Superior': { species:['Lake Trout','Brown Trout','Coho Salmon','Chinook Salmon','Whitefish','Brook Trout (coasters)','Smallmouth (bays)'] , note:'Very cold/clear; river mouths & structure matter.'},
+      'Lake Huron': { species:['Lake Trout','Walleye (Saginaw)','Smallmouth Bass','Brown/Steelhead (seasonal)'], note:'Saginaw Bay famed for walleye; rocky bays for smallmouth.' },
+      'Mississippi River': { species:['Channel Catfish','Flathead Catfish','Blue Catfish (lower reaches)','Largemouth Bass','Smallmouth Bass (upper)','Walleye','Sauger','White Bass','Common Carp','Gar'], note:'Backwaters, wing dams, current seams.' },
+      'Generic Lake': { species:['Largemouth Bass','Bluegill','Crappie','Channel Catfish','Common Carp','Yellow Perch (north)','Walleye (north)'] , note:'Northern natural lakes add walleye/perch.'},
+      'Generic River': { species:['Smallmouth Bass','Largemouth Bass (slower reaches)','Walleye/Sauger','Channel/Flathead Catfish','Carp','Gar'], note:'Current seams, eddies, pools, riffles.' },
+      'Generic Pond': { species:['Largemouth Bass','Bluegill','Crappie','Channel Catfish'], note:'Simple food webs; great for beginners.' }
+    };
 
-  const baitToSpecies = {
-    'hot dog': { aliases:['hotdogs','hot-dog','hotdog'], species:['Channel Catfish','Blue Catfish','Flathead Catfish','Common Carp','Bowfin'] },
-    'corn': { aliases:['canned corn','sweet corn'], species:['Common Carp','Buffalo','Bluegill (panfish)'] },
-    'nightcrawler': { aliases:['worm','earthworm','crawler'], species:['Bluegill','Crappie','Yellow Perch','Walleye','Channel Catfish','Common Carp','Trout (stocked)'] },
-    'cut bait': { aliases:['cut shad','cutbait'], species:['Channel Catfish','Blue Catfish','Flathead Catfish','Northern Pike (incidental)'] },
-    'minnow': { aliases:['shiner','fathead','live minnow'], species:['Crappie','Walleye','Perch','Trout','Bass (all)'] },
-    'spinnerbait': { aliases:['spinner bait'], species:['Largemouth Bass','Smallmouth Bass','Northern Pike','Muskellunge (occasionally)'] },
-    'ned rig': { aliases:['ned'], species:['Largemouth Bass','Smallmouth Bass','Spotted Bass'] },
-    'drop shot': { aliases:['dropshot'], species:['Largemouth Bass','Smallmouth Bass'] },
-    'tube': { aliases:['tube jig'], species:['Smallmouth Bass','Largemouth Bass'] },
-    'frog': { aliases:['hollow-body frog','topwater frog'], species:['Largemouth Bass'] },
-    'swimbait': { aliases:['paddletail'], species:['Largemouth Bass','Smallmouth Bass','Walleye (larger baits)'] }
-  };
+    var topSpots = {
+      'Michigan': [
+        {name:'Lake St. Clair', note:'Smallmouth & muskie powerhouse; drifts/tubes/cranks on breaks.'},
+        {name:'Saginaw Bay', note:'Walleye trolling/spinners; spring–early summer hot.'},
+        {name:'Detroit River', note:'Spring walleye jig bite; vertical in current seams.'},
+        {name:'Houghton Lake', note:'Panfish/bass; weeds & flats.'}
+      ],
+      'Texas': [
+        {name:'Lake Fork', note:'Big largemouth; timber/points; jigs/swimbaits.'},
+        {name:'Sam Rayburn', note:'Grass & offshore schools; cranks/chatterbaits.'},
+        {name:'Toledo Bend', note:'Ledges & grass; border reservoir.'}
+      ],
+      'Florida': [
+        {name:'Lake Okeechobee', note:'Grass mats; flipping & frogs.'},
+        {name:'Kissimmee Chain', note:'Spawning flats; speed worms/senkos/frogs.'},
+        {name:'Rodman Reservoir', note:'Wood/vegetation; big bass potential.'}
+      ],
+      'Wisconsin': [
+        {name:'Green Bay/Door County', note:'Smallmouth & muskie; rock/grass edges.'},
+        {name:'Winnebago', note:'Walleye & perch; reefs/bridges.'},
+        {name:'Mississippi Pools 4–9', note:'Multi-species; wing dams/backwaters.'}
+      ]
+    };
 
-  const waterbodies = {
-    'Lake Michigan': { species:['Chinook Salmon','Coho Salmon','Lake Trout','Brown Trout','Rainbow Trout/Steelhead','Smallmouth Bass','Yellow Perch','Walleye (some areas)','Common Carp'], note:'Harbors vs. open water differ; salmonids roam pelagic zones.' },
-    'Lake Erie': { species:['Walleye','Smallmouth Bass','Yellow Perch','Steelhead (trib runs)','Channel Catfish'], note:'Western basin = walleye/perch; reefs/rocks for smallmouth.' },
-    'Mississippi River': { species:['Channel Catfish','Flathead Catfish','Blue Catfish (lower reaches)','Largemouth Bass','Smallmouth Bass (upper)','Walleye','Sauger','White Bass','Common Carp','Gar'], note:'Backwaters, wing dams, and current seams matter.' },
-    'Generic Lake': { species:['Largemouth Bass','Bluegill','Crappie','Channel Catfish','Common Carp','Yellow Perch (north)','Walleye (north)'], note:'Northern natural lakes add walleye/perch.' },
-    'Generic River': { species:['Smallmouth Bass','Largemouth Bass (slower reaches)','Walleye/Sauger','Channel/Flathead Catfish','Carp','Gar'], note:'Current seams, eddies, pools, riffles.' },
-    'Generic Pond': { species:['Largemouth Bass','Bluegill','Crappie','Channel Catfish'], note:'Simple food webs; great for beginners.' }
-  };
+    var records = [
+      {species:"Largemouth Bass (All-Tackle)", note:"Often cited 22 lb 4 oz (1932) and 22 lb 5 oz tie (2009). Verify latest at IGFA."},
+      {species:"Smallmouth Bass (All-Tackle)", note:"11 lb 15 oz (1955) — check IGFA."},
+      {species:"Walleye (All-Tackle)", note:"25 lb (1960) — verify at IGFA."},
+      {species:"Muskellunge (All-Tackle)", note:"67 lb 8 oz (1949) — verify at IGFA."}
+    ];
 
-  const topSpots = {
-    'Michigan': [
-      {name:'Lake St. Clair', note:'Smallmouth & muskie powerhouse; drifts/tubes/cranks on breaks.'},
-      {name:'Saginaw Bay', note:'Walleye trolling/spinners; spring–early summer hot.'},
-      {name:'Detroit River', note:'Spring walleye jig bite; vertical in current seams.'},
-      {name:'Houghton Lake', note:'Panfish/bass; weeds & flats.'}
-    ],
-    'Texas': [
-      {name:'Lake Fork', note:'Big largemouth; timber/points; jigs/swimbaits.'},
-      {name:'Sam Rayburn', note:'Grass & offshore schools; cranks/chatterbaits.'},
-      {name:'Toledo Bend', note:'Ledges & grass; border reservoir.'}
-    ]
-  };
+    var regsDirectory = [
+      {state:'United States — Directory', url:'https://www.takemefishing.org/'},
+      {state:'Iowa — Official DNR regs', url:'https://www.iowadnr.gov/things-do/fishing/regulations-laws'},
+      {state:'New York — DEC', url:'https://dec.ny.gov/regulatory/permits-licenses/sporting-and-use/sporting/fishing-license'},
+      {state:'Pennsylvania — PFBC', url:'https://www.pa.gov/agencies/fishandboat/faqs/fishing-licenses-%26-regulations-faqs.html'}
+    ];
 
-  const regsDirectory = [
-    {state:'United States — Directory', url:'https://www.takemefishing.org/'},
-    {state:'New York — DEC fishing', url:'https://dec.ny.gov/regulatory/permits-licenses/sporting-and-use/sporting/fishing-license'},
-    {state:'Pennsylvania — PFBC', url:'https://www.pa.gov/agencies/fishandboat/faqs/fishing-licenses-%26-regulations-faqs.html'}
-  ];
+    var temps = {
+      largemouth:{spawn:[60,75]}, smallmouth:{spawn:[55,65]}, walleye:{spawn:[42,50]},
+      pike:{spawn:[40,52]}, crappie:{spawn:[58,68]}, bluegill:{spawn:[67,80]}, trout:{spawn:[40,52]}
+    };
 
-  return {species, knots, facts, baitRoulette, conditions, temps, records, baitToSpecies, waterbodies, topSpots, regsDirectory};
-}
-const DB = buildDB();
+    var conditions = {
+      season:{spring:"Shallow warming flats; reaction baits in wind; finesse near beds.",
+              summer:"Early/late topwater; mid-day deeper or shade.",
+              fall:"Follow bait into creeks; cranks/jerks.",
+              winter:"Downsize & slow: ned, hair, blade."},
+      clarity:{clear:"Natural colors, light leaders.",
+               stained:"Chartreuse/white; spinnerbaits/bladed jigs.",
+               dirty:"Big thump, dark colors.",
+               muddy:"Slow, tight wobble; add scent."},
+      cover:{grass:"Swim jigs, chatterbaits, frogs.",
+             wood:"Squarebills, jigs, Texas rigs.",
+             rock:"Cranks, tubes, football jigs.",
+             docks:"Skip plastics/jigs."}
+    };
 
-// greet
-addMsg('bot', "Hello, I’m Fishly‑AI — your AI fishing buddy. Ask me about species, baits, seasons, water temps, or anything freshwater. I’ll keep it friendly, helpful, and a little punny. 🎣");
+    return {species, knots, facts, baitRoulette, baitToSpecies, waterbodies, topSpots, records, regsDirectory, temps, conditions};
+  }
+  var DB = buildDB();
 
-// ===== chat wiring =====
-(function initChat(){
-  const sendBtn = $('#send');
-  const msgIn = $('#msg');
-  if(sendBtn){
-    sendBtn.addEventListener('click', ()=>{
-      const val = (msgIn && msgIn.value)||'';
-      if(!val.trim()) return;
-      addMsg('user', val);
-      try{ handleUserInput(val); }catch(err){ addMsg('bot','⚠️ Oops: '+err.message); }
-      msgIn.value='';
+  // greet
+  addMsg('bot',"Hello, I’m Fishly-AI — your AI fishing buddy. Ask me about species, baits, seasons, water temps, or anything freshwater. I’ll keep it friendly, helpful, and a little punny. 🎣");
+
+  // ===== core routing =====
+  function detectSpecies(t){
+    var keys = Object.keys(DB.species);
+    for(var i=0;i<keys.length;i++){
+      var name = keys[i];
+      var entry = DB.species[name];
+      var aliases = [name].concat(entry.aliases||[]).map(function(s){return s.toLowerCase();});
+      if(aliases.some(function(k){return t.indexOf(k)>-1;})) return name;
+    }
+    return null;
+  }
+
+  function handleBaitQuery(t){
+    if(!/(what|which).*(fish).*?(attracted|bite|hit|eat|go for)|bait.*(work|good)/.test(t)) return null;
+    var keyHit = null;
+    var baitKeys = Object.keys(DB.baitToSpecies);
+    for(var i=0;i<baitKeys.length;i++){
+      var bait = baitKeys[i], info = DB.baitToSpecies[bait];
+      var aliases = [bait].concat(info.aliases||[]).map(function(x){return x.toLowerCase();});
+      if(aliases.some(function(a){return t.indexOf(a)>-1;})){ keyHit={bait:bait, info:info}; break; }
+    }
+    if(!keyHit) return null;
+    var list = keyHit.info.species.map(function(s){return "• "+s;}).join("\n");
+    return "Anglers often catch fish on "+keyHit.bait+" like:\n"+list+"\n\nWant details on one of these? Type the species name and I’ll break down tactics, temps, and tackle.";
+  }
+
+  function handleWaterbodyQuery(t){
+    if(!/(what).*(fish).*(in|at)|what.*(catch).*if.*(fish)/.test(t)) return null;
+    // direct match
+    var wKeys = Object.keys(DB.waterbodies);
+    for(var i=0;i<wKeys.length;i++){
+      var wb = wKeys[i], info = DB.waterbodies[wb];
+      var names = [wb.toLowerCase()];
+      if(names.some(function(n){return t.indexOf(n)>-1;})){
+        var species = info.species.join(', ');
+        var note = info.note? "\nNote: "+info.note : "";
+        return "Typical species for "+wb+": "+species+"."+note+"\n(These are common reports; always verify local surveys and regs.)";
+      }
+    }
+    // generic fallbacks
+    if(t.indexOf('river')>-1){ var g=DB.waterbodies['Generic River']; return "Common river species: "+g.species.join(', ')+". "+(g.note||""); }
+    if(t.indexOf('pond')>-1){ var p=DB.waterbodies['Generic Pond']; return "Common pond species: "+p.species.join(', ')+". "+(p.note||""); }
+    if(t.indexOf('lake')>-1){ var l=DB.waterbodies['Generic Lake']; return "Common lake species: "+l.species.join(', ')+". "+(l.note||""); }
+    return null;
+  }
+
+  function suggestLures(t){
+    var clarity = (t.match(/(clear|stained|dirty|muddy)/)||[])[1]||null;
+    var cover   = (t.match(/(grass|weeds|vegetation|wood|laydown|timber|rock|riprap|docks|lily|pads)/)||[])[1]||null;
+    var season  = (t.match(/(spring|summer|fall|autumn|winter)/)||[])[1]||null;
+    var picks=[];
+    if(season) picks.push("Season: "+season.charAt(0).toUpperCase()+season.slice(1)+" → "+DB.conditions.season[season.replace('autumn','fall')]);
+    if(clarity) picks.push("Water: "+clarity+" → "+DB.conditions.clarity[clarity]);
+    if(cover) picks.push("Cover: "+cover+" → "+DB.conditions.cover[cover]);
+    var base = picks.length? picks.join("\n") : "Give me season, clarity, and cover to dial it in. Start with a moving bait to find ’em, then slow down with a jig or worm after a bite.";
+    return base+"\n\nBonus: Tap 🎲 Bait Roulette for your next lure.";
+  }
+
+  function waterTempTalk(t){
+    var hits = [];
+    var map = DB.temps;
+    for(var k in map){ if(t.indexOf(k)>-1){ hits.push([k,map[k]]); } }
+    if(hits.length===0){
+      return "General rule: cold = slow finesse; warming = reaction baits; stable summer = topwaters early/late + deeper mid-day; fall = chase baitfish; winter = go tiny and slow. Ask me about a species for exact temps.";
+    }
+    var lines = hits.map(function(x){ return "• "+x[0].charAt(0).toUpperCase()+x[0].slice(1)+": spawn ~"+x[1].spawn[0]+"–"+x[1].spawn[1]+"°F"; });
+    return "Water temp cheat sheet:\n"+lines.join("\n");
+  }
+
+  function craftReply(t){
+    var baitAns = handleBaitQuery(t); if(baitAns) return baitAns;
+    var wbAns = handleWaterbodyQuery(t); if(wbAns) return wbAns;
+
+    if(t.indexOf('knot')>-1){ return "Knots? Nice! Tap ‘Knot Tutor’ above for step-by-steps (Palomar, Uni, Improved Clinch, FG, Snell, and more)."; }
+
+    var sp = detectSpecies(t);
+    if(sp){ return renderSpeciesProfile(sp); }
+
+    if(/(best|good|go-to|recommend).*?(bait|lure)|what.*(use|throw)/.test(t) || t.indexOf('what should i use')>-1){
+      return suggestLures(t);
+    }
+
+    if(t.indexOf('water temp')>-1 || t.indexOf('temperature')>-1){
+      return waterTempTalk(t);
+    }
+
+    var fishingKeys = ['fish','fishing','bass','trout','walleye','musk','pike','catfish','bluegill','crappie','lure','bait','rod','reel','line','knot','lake','river','spawn','water temp'];
+    if(!fishingKeys.some(function(k){return t.indexOf(k)>-1;})){
+      return "I’m more fins than finance. Let’s reel it back to fishing — ask about a species, a knot, or what to throw this season at your lake.";
+    }
+
+    return "Tell me the species or situation (season, water clarity, cover), and I’ll recommend baits, retrieves, and setups. Or tap a tool above.";
+  }
+
+  function renderSpeciesProfile(name){
+    var s = DB.species[name]; if(!s) return "I know that fish in spirit, but not in data yet.";
+    var lines = [];
+    lines.push("🎯 "+name+" ("+s.sci+")");
+    if(s.spawn) lines.push("Spawning: ~"+s.spawn.tempF[0]+"–"+s.spawn.tempF[1]+"°F, months "+s.spawn.months.join(', '));
+    if(s.diet) lines.push("Diet: "+s.diet.join(', '));
+    if(s.tactics){
+      lines.push("\nSeasonal tactics:");
+      ['spring','summer','fall','winter'].forEach(function(season){
+        if(s.tactics[season]) lines.push("• "+season.charAt(0).toUpperCase()+season.slice(1)+": "+s.tactics[season].join('; '));
+      });
+    }
+    return lines.join("\n");
+  }
+
+  // ===== wire UI after DOM ready =====
+  document.addEventListener('DOMContentLoaded', function(){
+    // Send
+    var input = $('#input'); var btnSend = $('#send');
+    if(btnSend){ btnSend.addEventListener('click', function(){
+      var text = (input && input.value || '').trim();
+      if(!text) return;
+      input.value=''; addMsg('me', text);
+      var reply = craftReply(text.toLowerCase());
+      addMsg('bot', reply);
+    });}
+    if(input){ input.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); if(btnSend) btnSend.click(); } }); }
+
+    // Modal helpers
+    function openModal(id){ var m = document.getElementById(id); if(m) m.classList.add('open'); }
+    function closeModal(id){ var m = document.getElementById(id); if(m) m.classList.remove('open'); }
+    $all('[data-close]').forEach(function(el){ el.addEventListener('click', function(){ closeModal(el.getAttribute('data-close')); }); });
+
+    // Buttons
+    var bKnots = $('#btnKnots');
+    if(bKnots){ bKnots.addEventListener('click', function(){ renderKnots(); openModal('mdlKnots'); }); }
+
+    var bFact = $('#btnFact');
+    if(bFact){ bFact.addEventListener('click', function(){ addMsg('bot',"Here's a random fishing fact:"); addMsg('bot', rand(DB.facts)); }); }
+
+    var bRoulette = $('#btnRoulette');
+    if(bRoulette){ bRoulette.addEventListener('click', function(){ var c=rand(DB.baitRoulette); addMsg('bot','🎲 Rolling the dice...'); addMsg('bot', 'Roulette says: '+c.name+' — '+c.tip); }); }
+
+    var bEstimator = $('#btnEstimator');
+    if(bEstimator){ bEstimator.addEventListener('click', function(){ renderEstimator(); openModal('mdlEstimator'); }); }
+
+    var bRecords = $('#btnRecords');
+    if(bRecords){ bRecords.addEventListener('click', function(){ renderRecords(); openModal('mdlRecords'); }); }
+
+    var bRegs = $('#btnRegs');
+    if(bRegs){ bRegs.addEventListener('click', function(){ renderRegs(); openModal('mdlRegs'); }); }
+
+    var bSpots = $('#btnSpots');
+    if(bSpots){ bSpots.addEventListener('click', function(){ renderSpots(); openModal('mdlSpots'); }); }
+  });
+
+  // ===== feature renderers =====
+  function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  function renderKnots(){
+    var grid = document.getElementById('knotGrid'); if(!grid) return; grid.innerHTML='';
+    var ks = DB.knots;
+    Object.keys(ks).forEach(function(name){
+      var k = ks[name];
+      var det = document.createElement('details'); det.className='card';
+      var sum = document.createElement('summary'); sum.textContent=name; det.appendChild(sum);
+      var ol = document.createElement('ol'); k.steps.forEach(function(s){ var li=document.createElement('li'); li.textContent=s; ol.appendChild(li); }); det.appendChild(ol);
+      var tips = document.createElement('div'); tips.className='mute'; tips.innerHTML='Strength: <span class="pill">'+k.strength+'</span> — '+k.notes; det.appendChild(tips);
+      grid.appendChild(det);
     });
   }
-  if(msgIn){
-    msgIn.addEventListener('keydown', (e)=>{
-      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); if(sendBtn) sendBtn.click(); }
-    });
+
+  function renderEstimator(){
+    var spSel = document.getElementById('estSpecies'); if(!spSel) return;
+    spSel.innerHTML = Object.keys(DB.species).map(function(k){return '<option>'+k+'</option>';}).join('');
+    var btn = document.getElementById('btnCalc'); if(!btn) return;
+    btn.onclick = function(){
+      var species = spSel.value;
+      var L = parseFloat((document.getElementById('estLen').value||'0'));
+      var G = parseFloat((document.getElementById('estGirth').value||'0'));
+      if(document.getElementById('estUnits').value==='cm'){ L/=2.54; if(G) G/=2.54; }
+      var weight=0, method=''; var body = (DB.species[species] && DB.species[species].body) || 'moderate';
+      if(G>0){ weight=(G*G*L)/800; method='(girth² × length) / 800'; }
+      else { var K = body==='slender'?2800:(body==='stocky'?1400:1600); weight=(L*L*L)/K; method='length³ / '+K; }
+      addMsg('bot','Estimated weight for a '+species+': ~'+weight.toFixed(2)+' lb (formula: '+method+'). '+(G>0?'Girth provided → more accurate.':'No girth provided → rough estimate only.'));
+    };
   }
-})();
 
-function craftReply(t){
-  const baitAns = handleBaitQuery(t);
-  if(baitAns) return baitAns;
-  const wbAns = handleWaterbodyQuery(t);
-  if(wbAns) return wbAns;
-  return "Tell me the species or situation (season, water clarity, cover), and I’ll recommend baits, retrieves, and setups. Or tap a tool above.";
-}
-
-function detectSpecies(t){
-  const keys = Object.keys(DB.species);
-  for(const name of keys){
-    const entry = DB.species[name];
-    const aliases = [name, ...(entry.aliases||[])].map(s=>s.toLowerCase());
-    if(aliases.some(k=>t.includes(k))) return name;
-  }
-  return null;
-}
-
-function handleBaitQuery(t){
-  if(!/(what|which).*(fish).*?(attracted|bite|hit|eat|go for)|bait.*(work|good)/.test(t)) return null;
-  for(const [bait, info] of Object.entries(DB.baitToSpecies)){
-    const aliases = [bait, ...(info.aliases||[])].map(x=>x.toLowerCase());
-    if(aliases.some(a=>t.includes(a))){
-      const list = info.species.map(s=>`• ${s}`).join('
-');
-      return `Anglers often catch fish on ${bait} like:
-${list}
-
-Want details on one of these? Type the species name and I\'ll break down tactics, temps, and tackle.`;
-    }
-  }
-  return null;
-}
-
-function handleWaterbodyQuery(t){
-  if(!/(what).*(fish).*(in|at)|what.*(catch).*if.*(fish)/.test(t)) return null;
-  for(const [wb, info] of Object.entries(DB.waterbodies)){
-    const names = [wb].map(x=>x.toLowerCase());
-    if(names.some(n=>t.includes(n))){
-      const species = info.species.join(', ');
-      const note = info.note? `
-Note: ${info.note}`:'';
-      return `Typical species for ${wb}: ${species}.${note} 
-(These are common reports; always verify local surveys and regs.)`;
-    }
-  }
-  if(t.includes('river')){ const g=DB.waterbodies['Generic River']; return `Common river species: ${g.species.join(', ')}. ${g.note||''}`; }
-  if(t.includes('pond')){ const g=DB.waterbodies['Generic Pond']; return `Common pond species: ${g.species.join(', ')}. ${g.note||''}`; }
-  if(t.includes('lake')){ const g=DB.waterbodies['Generic Lake']; return `Common lake species: ${g.species.join(', ')}. ${g.note||''}`; }
-  return null;
-}
-
-function handleUserInput(txt){
-  const t = (txt||'').toLowerCase();
-  const sp = detectSpecies(t);
-  if(sp){ addMsg('bot', renderSpeciesProfile(sp)); return; }
-  const out = craftReply(t);
-  addMsg('bot', out);
-}
-
-function renderSpeciesProfile(name){
-  const s = DB.species[name]; if(!s) return `I know ${name} in spirit, not in data yet.`;
-  const lines = [];
-  lines.push(`🎯 ${name} (${s.sci})`);
-  if(s.spawn) lines.push(`Spawning ~${s.spawn.tempF[0]}–${s.spawn.tempF[1]}°F, months ${s.spawn.months.join(', ')}`);
-  if(s.diet) lines.push('Diet: '+s.diet.join(', '));
-  if(s.tactics){
-    lines.push('
-Seasonal tactics:');
-    for(const k of ['spring','summer','fall','winter']){ if(s.tactics[k]) lines.push(`• ${k[0].toUpperCase()+k.slice(1)}: ${s.tactics[k].join('; ')}`); }
-  }
-  return lines.join('
-');
-}
-
-// ===== buttons =====
-(function bindButtons(){
-  const dlgKnots = $('#dlgKnots');
-  const dlgEstimator = $('#dlgEstimator');
-  const dlgRecords = $('#dlgRecords');
-  const dlgRegs = $('#dlgRegs');
-  const dlgSpots = $('#dlgSpots');
-
-  const safeShow = (dlg)=>{ try{ if(dlg?.showModal) dlg.showModal(); else dlg?.setAttribute('open',''); }catch(e){ addMsg('bot','⚠️ Modal error: '+e.message); } };
-
-  const b = (id, fn)=>{ const el = $(id); if(el) el.addEventListener('click', fn); };
-
-  b('#btnKnots', ()=>{ renderKnots(); safeShow(dlgKnots); });
-  b('#btnFact',  ()=>{ addMsg('bot', "Here's a random fishing fact:"); addMsg('bot', rand(DB.facts)); });
-  b('#btnRoulette', ()=>{ const c=rand(DB.baitRoulette); addMsg('bot','🎲 Rolling the dice...'); addMsg('bot', `Roulette says: ${c.name} — ${c.tip}`); });
-  b('#btnEstimator', ()=>{ renderEstimator(); safeShow(dlgEstimator); });
-  b('#btnRecords', ()=>{ renderRecords(); safeShow(dlgRecords); });
-  b('#btnRegs', ()=>{ renderRegs(); safeShow(dlgRegs); });
-  b('#btnSpots', ()=>{ renderSpots(); safeShow(dlgSpots); });
-  b('#btnCloseSpots', ()=> dlgSpots?.close());
-})();
-
-function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-
-function renderKnots(){
-  const grid = document.getElementById('knotGrid'); if(!grid) return; grid.innerHTML='';
-  for(const [name,k] of Object.entries(DB.knots)){
-    const det=document.createElement('details'); det.className='card';
-    const sum=document.createElement('summary'); sum.textContent=name; det.appendChild(sum);
-    const ol=document.createElement('ol'); k.steps.forEach(s=>{ const li=document.createElement('li'); li.textContent=s; ol.appendChild(li); }); det.appendChild(ol);
-    const tips=document.createElement('div'); tips.className='card'; tips.style.background='#fff'; tips.innerHTML=`<small>Strength: <strong>${k.strength}</strong>. ${k.notes}</small>`; det.appendChild(tips);
-    grid.appendChild(det);
-  }
-}
-
-function renderEstimator(){
-  const spSel = document.getElementById('estSpecies'); if(!spSel) return;
-  spSel.innerHTML = Object.keys(DB.species).map(k=>`<option>${k}</option>`).join('');
-  const btn = document.getElementById('btnCalc'); if(!btn) return;
-  btn.onclick = ()=>{
-    const species = spSel.value; let L=parseFloat(document.getElementById('estLen').value||'0'); let G=parseFloat(document.getElementById('estGirth').value||'0');
-    if(document.getElementById('estUnits').value==='cm'){ L/=2.54; if(G) G/=2.54; }
-    let weight=0, method=''; const body=DB.species[species]?.body||'moderate';
-    if(G>0){ weight=(G*G*L)/800; method='(girth² × length) / 800'; }
-    else { const K = body==='slender'?2800: (body==='stocky'?1400:1600); weight=(L*L*L)/K; method=`length³ / ${K}`; }
-    addMsg('bot', `Estimated weight for a ${species}: ~${weight.toFixed(2)} lb (formula: ${method}). ${G>0?'Girth provided → more accurate.':'No girth provided → rough estimate only.'}`);
-  };
-}
-
-function renderRecords(){
-  const box = document.getElementById('recordsList'); if(!box) return;
-  box.innerHTML = DB.records.map(r=>`<div class="card"><strong>${r.species}</strong><div>${r.note}</div></div>`).join('');
-}
-
-function renderRegs(){
-  const grid = document.getElementById('regGrid'); const q = document.getElementById('regSearch'); if(!grid) return;
-  const draw = ()=>{
-    const needle = (q?.value||'').toLowerCase();
-    grid.innerHTML = DB.regsDirectory
-      .filter(x=>!needle || x.state.toLowerCase().includes(needle))
-      .map(x=>`<a class="card" href="${x.url}" target="_blank" rel="noopener">${x.state}</a>`)
-      .join('');
-  };
-  if(q) q.oninput = draw; draw();
-}
-
-function renderSpots(){
-  const grid = document.getElementById('spotGrid'); const q = document.getElementById('spotSearch'); if(!grid) return;
-  const draw = ()=>{
-    const needle = (q?.value||'').toLowerCase();
-    const states = Object.keys(DB.topSpots).filter(st=>!needle || st.toLowerCase().includes(needle));
-    grid.innerHTML = states.map(st=>{
-      const items = DB.topSpots[st].map(s=>`<li><strong>${s.name}</strong><br><small>${s.note}</small></li>`).join('');
-      return `<div class="card"><div style="font-weight:600">${st}</div><ul style="margin:6px 0 0 16px">${items}</ul></div>`;
+  function renderRecords(){
+    var box = document.getElementById('recordsList'); if(!box) return;
+    box.innerHTML = DB.records.map(function(r){
+      return '<div class="card"><strong>'+r.species+'</strong><div>'+r.note+'</div></div>';
     }).join('');
-  };
-  if(q) q.oninput = draw; draw();
-}
+  }
+
+  function renderRegs(){
+    var grid = document.getElementById('regGrid'); var q = document.getElementById('regSearch'); if(!grid) return;
+    function draw(){
+      var needle = (q && q.value || '').toLowerCase();
+      grid.innerHTML = DB.regsDirectory
+        .filter(function(x){ return !needle || x.state.toLowerCase().indexOf(needle)>-1; })
+        .map(function(x){ return '<a class="card" href="'+x.url+'" target="_blank" rel="noopener">'+x.state+'</a>'; })
+        .join('');
+    }
+    if(q) q.oninput = draw; draw();
+  }
+
+  function renderSpots(){
+    var grid = document.getElementById('spotGrid'); var q = document.getElementById('spotSearch'); if(!grid) return;
+    function draw(){
+      var needle = (q && q.value || '').toLowerCase();
+      var states = Object.keys(DB.topSpots).filter(function(st){ return !needle || st.toLowerCase().indexOf(needle)>-1; });
+      grid.innerHTML = states.map(function(st){
+        var items = DB.topSpots[st].map(function(s){ return '<li><strong>'+s.name+'</strong><br><small>'+s.note+'</small></li>'; }).join('');
+        return '<div class="card"><div style="font-weight:600">'+st+'</div><ul style="margin:6px 0 0 16px">'+items+'</ul></div>';
+      }).join('');
+    }
+    if(q) q.oninput = draw; draw();
+  }
+})();
 </script>
 </body>
 </html>
